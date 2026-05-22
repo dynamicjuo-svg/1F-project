@@ -24,6 +24,8 @@ import folium
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+from branca.element import MacroElement
+from jinja2 import Template
 from streamlit_folium import st_folium
 
 from api_keys import ANTHROPIC_KEY, VWORLD_KEY, NAVER_MAP_CLIENT_ID
@@ -83,6 +85,64 @@ DEFAULT_JIMOK_COLOR = "#9ca3af"
 
 def jimok_color(jimok: str) -> str:
     return JIMOK_COLOR.get(jimok, DEFAULT_JIMOK_COLOR)
+
+
+# 마커 라벨을 줌 임계값 이상에서만 표시
+# - CSS: 처음에 .zoom-label 숨김 (JS 실패해도 안전)
+# - JS: setInterval로 지속 모니터링하며 토글
+class ZoomLabelToggle(MacroElement):
+    _template = Template("""
+        {% macro header(this, kwargs) %}
+        <style>
+            .leaflet-tooltip.zoom-label {
+                display: none;
+                background: rgba(255,255,255,0.92);
+                border: 1px solid #d4d4d8;
+                border-radius: 3px;
+                font-size: 11px;
+                padding: 1px 5px;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+            }
+            .leaflet-tooltip.zoom-label.zoom-label-show {
+                display: block;
+            }
+        </style>
+        {% endmacro %}
+
+        {% macro script(this, kwargs) %}
+        (function() {
+            var threshold = {{this.threshold}};
+            function findMap() {
+                for (var k in window) {
+                    try {
+                        var v = window[k];
+                        if (v && typeof v.getZoom === 'function') {
+                            return v;
+                        }
+                    } catch (e) {}
+                }
+                return null;
+            }
+            function apply() {
+                var mapObj = findMap();
+                if (!mapObj) return;
+                var show = mapObj.getZoom() >= threshold;
+                document.querySelectorAll('.zoom-label').forEach(function(el) {
+                    if (show) el.classList.add('zoom-label-show');
+                    else el.classList.remove('zoom-label-show');
+                });
+            }
+            // 300ms마다 — 새 마커 추가·줌 변경 모두 잡힘
+            setInterval(apply, 300);
+            setTimeout(apply, 100);
+        })();
+        {% endmacro %}
+    """)
+
+    def __init__(self, threshold=15):
+        super().__init__()
+        self._name = "ZoomLabelToggle"
+        self.threshold = threshold
 
 
 # =====================================================================
@@ -650,7 +710,7 @@ if "result" in st.session_state:
                 popup=folium.Popup(html, max_width=320),
             ).add_to(m)
 
-        # 2) 마커 (지목별 색)
+        # 2) 마커 (지목별 색) + 항상 보이는 평수·평단가 라벨
         for pnu in ordered_pnus:
             group = pnu_groups[pnu]
             d, r = group[0]
@@ -661,12 +721,36 @@ if "result" in st.session_state:
             marker_color = SELECTED_COLOR if is_sel else jc
             radius = 9 if is_sel else 6
             html = build_html(group)
+
+            # 라벨: "1,234평 · 50만/평 · 2025-12"
+            pyeong = int(r["area_m2"] * PYEONG_PER_M2) if r["area_m2"] else 0
+            unit = int(r["unit_per_pyeong"]) if r["unit_per_pyeong"] else None
+            # 그룹 중 가장 최근 거래 년월
+            latest_ymd = max(
+                (rg["deal_ymd"] for _, rg in group if rg.get("deal_ymd")),
+                default=""
+            )
+            ym_short = latest_ymd[:7] if latest_ymd else ""
+
+            parts = [f"{pyeong:,}평"]
+            if unit:
+                parts.append(f"{unit:,}만/평")
+            if ym_short:
+                parts.append(ym_short)
+            label = "·".join(parts)
+
             folium.CircleMarker(
                 location=[r["resolved_lat"], r["resolved_lon"]],
                 radius=radius, color=marker_color, fill=True,
                 fill_color=marker_color,
                 fill_opacity=0.9, weight=2,
-                tooltip=folium.Tooltip(html, sticky=False),
+                tooltip=folium.Tooltip(
+                    label,
+                    permanent=True,
+                    direction="right",
+                    offset=(6, 0),
+                    class_name="zoom-label",
+                ),
                 popup=folium.Popup(html, max_width=320),
             ).add_to(m)
 
@@ -690,6 +774,9 @@ if "result" in st.session_state:
             "🔴 선택된 필지  ·  호버하면 지목 색으로 강조  ·  "
             "마커/필지 클릭하면 표에서 강조"
         )
+
+        # 마커 라벨은 줌 15 이상에서만 표시 (줌아웃 시 화면 정리)
+        m.add_child(ZoomLabelToggle(threshold=15))
 
         map_output = st_folium(
             m, center=center, zoom=zoom,
