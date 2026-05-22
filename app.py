@@ -146,11 +146,11 @@ class ZoomLabelToggle(MacroElement):
 
 
 # =====================================================================
-#  네이버 지도 HTML 빌더 (streamlit components 임베드)
+#  네이버 지도 HTML 빌더 (streamlit components iframe 임베드)
 # =====================================================================
 def build_naver_map_html(client_id, center, zoom, markers, polygons,
-                          road_lines, height=520):
-    """네이버 지도 v3 SDK 임베드 HTML."""
+                          road_lines, height=520, zoom_label_threshold=15):
+    """네이버 지도 v3 SDK + 줌 임계값 기반 라벨 토글."""
     markers_json = json.dumps(markers, ensure_ascii=False)
     polygons_json = json.dumps(polygons, ensure_ascii=False)
     roads_json = json.dumps(road_lines or [], ensure_ascii=False)
@@ -160,7 +160,7 @@ def build_naver_map_html(client_id, center, zoom, markers, polygons,
 <html>
 <head>
 <meta charset="utf-8">
-<script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId={client_id}"></script>
+<script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId={client_id}"></script>
 <style>
   body, html {{ margin: 0; padding: 0; font-family: system-ui, sans-serif; }}
   #map {{ width: 100%; height: {height}px; }}
@@ -170,21 +170,40 @@ def build_naver_map_html(client_id, center, zoom, markers, polygons,
     border: 1px solid #d4d4d8; border-radius: 6px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   }}
+  .marker-wrap {{ display: flex; align-items: center; cursor: pointer; }}
+  .marker-dot {{
+    border-radius: 50%; border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }}
+  .marker-label {{
+    margin-left: 6px;
+    background: rgba(255,255,255,0.92);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px; font-weight: 500;
+    color: #1f2937; white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    display: none;
+  }}
+  .marker-label.show {{ display: inline-block; }}
 </style>
 </head>
 <body>
 <div id="map"></div>
 <script>
+// 인증 실패 시 명확한 메시지 출력
+window.navermap_authFailure = function() {{
+  document.getElementById('map').innerHTML =
+    '<div style="padding:24px;color:#dc2626;font-size:13px;line-height:1.6;">'
+    + '<b>네이버 지도 인증 실패</b><br>'
+    + 'NCP 콘솔의 서비스 URL에 현재 도메인이 등록돼 있는지 확인하세요.<br>'
+    + 'Client ID: <code>{client_id}</code></div>';
+}};
+
 if (typeof naver === 'undefined' || !naver.maps) {{
   document.getElementById('map').innerHTML =
     '<div style="padding:24px;color:#dc2626;font-size:13px;">'
-    + '네이버 지도 SDK 로드 실패. <br><br>'
-    + '확인:<br>'
-    + '1) NCP 콘솔에서 Maps Application의 "서비스 URL"에 '
-    + 'http://localhost:8501 가 등록되어 있는지<br>'
-    + '2) Client ID가 정확한지 (Client Secret 아님)<br>'
-    + '3) Maps API "Web Dynamic Map" 서비스가 활성화되어 있는지'
-    + '</div>';
+    + '네이버 지도 SDK 로드 실패. 키 또는 네트워크 확인 필요.</div>';
 }} else {{
   const map = new naver.maps.Map('map', {{
     center: new naver.maps.LatLng({center[0]}, {center[1]}),
@@ -196,7 +215,42 @@ if (typeof naver === 'undefined' || !naver.maps) {{
     scaleControl: true,
   }});
 
-  // 도로 라인 (검색 대상 도로)
+  // 지적편집도 레이어 (줌 14+에서 자동 표시)
+  const cadastralLayer = new naver.maps.CadastralLayer();
+  cadastralLayer.setMap(map);
+
+  // 사용자가 끌 수 있는 토글 버튼 (지도 좌상단)
+  const cadBtn = document.createElement('button');
+  cadBtn.innerText = '🗺️ 지적편집도 ON';
+  cadBtn.style.cssText =
+    'position:absolute;top:10px;left:10px;z-index:1000;' +
+    'padding:6px 10px;background:white;border:1px solid #c0c0c0;' +
+    'border-radius:4px;cursor:pointer;font-size:12px;' +
+    'box-shadow:0 1px 3px rgba(0,0,0,0.2);font-weight:500;';
+  cadBtn.onclick = function() {{
+    if (cadastralLayer.getMap()) {{
+      cadastralLayer.setMap(null);
+      cadBtn.innerText = '🗺️ 지적편집도 OFF';
+      cadBtn.style.opacity = '0.6';
+    }} else {{
+      cadastralLayer.setMap(map);
+      cadBtn.innerText = '🗺️ 지적편집도 ON';
+      cadBtn.style.opacity = '1';
+    }}
+  }};
+  document.getElementById('map').appendChild(cadBtn);
+
+  const ZOOM_THRESHOLD = {zoom_label_threshold};
+  function updateLabels() {{
+    const show = map.getZoom() >= ZOOM_THRESHOLD;
+    document.querySelectorAll('.marker-label').forEach(function(el) {{
+      if (show) el.classList.add('show');
+      else el.classList.remove('show');
+    }});
+  }}
+  naver.maps.Event.addListener(map, 'zoom_changed', updateLabels);
+
+  // 도로 라인
   const roads = {roads_json};
   roads.forEach(line => {{
     const path = line.map(c => new naver.maps.LatLng(c[1], c[0]));
@@ -206,7 +260,7 @@ if (typeof naver === 'undefined' || !naver.maps) {{
     }});
   }});
 
-  // 폴리곤 — 평소엔 투명, 호버 시 지목 색으로 강조
+  // 폴리곤 — 평소엔 투명, 호버 시 지목 색
   const SEL = '{sel_color}';
   const polygons = {polygons_json};
   polygons.forEach(p => {{
@@ -223,13 +277,11 @@ if (typeof naver === 'undefined' || !naver.maps) {{
       strokeWeight: isSel ? 3 : 0.5,
       clickable: true,
     }});
-
     const info = new naver.maps.InfoWindow({{
       content: '<div class="info-card">' + p.html + '</div>',
       borderWidth: 0, anchorSize: new naver.maps.Size(0, 0),
       pixelOffset: new naver.maps.Point(0, -8),
     }});
-
     if (!isSel) {{
       naver.maps.Event.addListener(polygon, 'mouseover', e => {{
         polygon.setOptions({{
@@ -246,43 +298,45 @@ if (typeof naver === 'undefined' || !naver.maps) {{
         info.close();
       }});
     }} else {{
-      naver.maps.Event.addListener(polygon, 'mouseover', e => {{
-        info.open(map, e.coord);
-      }});
+      naver.maps.Event.addListener(polygon, 'mouseover', e => info.open(map, e.coord));
       naver.maps.Event.addListener(polygon, 'mouseout', () => info.close());
     }}
   }});
 
-  // 마커 — 지목별 색, 항상 표시
+  // 마커 — 지목별 색 + 줌 임계값 기반 라벨
   const markers = {markers_json};
   markers.forEach(m => {{
     const sel = m.is_selected;
     const size = sel ? 16 : 12;
     const color = sel ? SEL : m.color;
+    const dotStyle = `background:${{color}};width:${{size}}px;height:${{size}}px;`;
+    const labelText = (m.label || '').replace(/</g, '&lt;');
+    const content =
+      '<div class="marker-wrap">' +
+      '<div class="marker-dot" style="' + dotStyle + '"></div>' +
+      '<div class="marker-label">' + labelText + '</div>' +
+      '</div>';
     const marker = new naver.maps.Marker({{
       position: new naver.maps.LatLng(m.lat, m.lon),
       map: map,
       icon: {{
-        content:
-          '<div style="background:' + color + ';width:' + size + 'px;'
-          + 'height:' + size + 'px;border-radius:50%;'
-          + 'border:2px solid white;'
-          + 'box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
+        content: content,
         anchor: new naver.maps.Point(size/2, size/2),
       }},
       zIndex: sel ? 1000 : 100,
     }});
-
     const info = new naver.maps.InfoWindow({{
       content: '<div class="info-card">' + m.html + '</div>',
       borderWidth: 0, anchorSize: new naver.maps.Size(0, 0),
       pixelOffset: new naver.maps.Point(0, -size/2 - 4),
     }});
-    naver.maps.Event.addListener(marker, 'mouseover',
-      () => info.open(map, marker));
-    naver.maps.Event.addListener(marker, 'mouseout',
-      () => info.close());
+    naver.maps.Event.addListener(marker, 'mouseover', () => info.open(map, marker));
+    naver.maps.Event.addListener(marker, 'mouseout', () => info.close());
   }});
+
+  // 초기 라벨 표시 (마커 모두 추가된 후)
+  setTimeout(updateLabels, 50);
+  setTimeout(updateLabels, 400);
 }}
 </script>
 </body>
@@ -325,7 +379,7 @@ def search_pipeline(query: str, include_road_jimok: bool):
     out_of_range = bool(emds) and not allowed_emds
     cond["emd_list"] = allowed_emds  # 정규화된 리스트로 덮어씀
 
-    matched_road = None
+    matched_roads = []  # 매칭된 도로명 리스트 (1개 또는 여러 개)
     road_info = None
     road_lines = None
     if cond.get("road_query"):
@@ -334,7 +388,7 @@ def search_pipeline(query: str, include_road_jimok: bool):
             "SELECT 1 FROM roads WHERE road_name = ? LIMIT 1", (rq,)
         ).fetchone()
         if direct:
-            matched_road = rq
+            matched_roads = [rq]
             road_info = {"matched": rq, "confidence": "exact",
                          "reason": "DB에 직접 일치"}
         else:
@@ -344,7 +398,14 @@ def search_pipeline(query: str, include_road_jimok: bool):
                 "AND road_name NOT IN ('', '-') ORDER BY road_name"
             )]
             road_info = map_road(client, rq, cands)
-            matched_road = road_info.get("matched")
+            m = road_info.get("matched")
+            if isinstance(m, list):
+                matched_roads = m
+            elif m:
+                matched_roads = [m]
+    # 단일 표시용 (UI 등 호환)
+    matched_road = (matched_roads[0] if len(matched_roads) == 1
+                    else (", ".join(matched_roads) if matched_roads else None))
 
     where = ["resolved_pnu IS NOT NULL"]
     params = []
@@ -382,10 +443,12 @@ def search_pipeline(query: str, include_road_jimok: bool):
         if cond.get(fld) is not None:
             where.append(f"{col} {op} ?")
             params.append(cond[fld])
-    if matched_road and cond.get("radius_m"):
+    if matched_roads and cond.get("radius_m"):
+        placeholders = ",".join("?" * len(matched_roads))
         b = conn.execute(
-            "SELECT MIN(min_lon), MAX(max_lon), MIN(min_lat), MAX(max_lat) "
-            "FROM roads WHERE road_name = ?", (matched_road,)
+            f"SELECT MIN(min_lon), MAX(max_lon), MIN(min_lat), MAX(max_lat) "
+            f"FROM roads WHERE road_name IN ({placeholders})",
+            matched_roads,
         ).fetchone()
         if b and b[0] is not None:
             rad_deg = cond["radius_m"] / 111049.0
@@ -394,8 +457,9 @@ def search_pipeline(query: str, include_road_jimok: bool):
             params += [b[0] - rad_deg, b[1] + rad_deg,
                        b[2] - rad_deg, b[3] + rad_deg]
             road_lines = [json.loads(r[0]) for r in conn.execute(
-                "SELECT geometry_json FROM roads WHERE road_name = ?",
-                (matched_road,))]
+                f"SELECT geometry_json FROM roads "
+                f"WHERE road_name IN ({placeholders})",
+                matched_roads)]
 
     sort_by = cond.get("sort_by") or "deal_ymd"
     sort_order = (cond.get("sort_order") or "desc").upper()
@@ -560,9 +624,9 @@ if "result" in st.session_state:
 
     col_map, col_table = st.columns([1, 1])
 
-    # ===== 지도 (V-World 베이스맵) =====
+    # ===== 지도 (네이버) =====
     with col_map:
-        st.subheader("📍 거래 위치 (V-World 베이스맵)")
+        st.subheader("📍 거래 위치 (네이버 지도)")
 
         # PNU별 거래 그룹 + 폴리곤 일괄 조회
         max_pins = 300
@@ -659,79 +723,23 @@ if "result" in st.session_state:
                     "color": jc, "is_selected": is_sel, "html": html,
                 })
 
-        # folium + V-World 베이스맵
-        m = folium.Map(
-            location=center, zoom_start=zoom,
-            tiles=VWORLD_TILES, attr=VWORLD_ATTR,
-        )
-
-        # 도로 라인
-        if result["road_lines"]:
-            for line in result["road_lines"]:
-                folium.PolyLine(
-                    [[c[1], c[0]] for c in line],
-                    color="blue", weight=3, opacity=0.5,
-                ).add_to(m)
-
-        # 그릴 순서: 선택된 PNU는 마지막에 (z-index 위에)
-        ordered_pnus = [p for p in pnu_groups if p != prev_selected_pnu]
-        if prev_selected_pnu and prev_selected_pnu in pnu_groups:
-            ordered_pnus.append(prev_selected_pnu)
-
-        # 1) 폴리곤 (평소 투명, 호버 시 지목 색)
-        for pnu in ordered_pnus:
-            group = pnu_groups[pnu]
-            geom = geom_map.get(pnu)
-            if not geom:
-                continue
-            r = group[0][1]
-            is_sel = (pnu == prev_selected_pnu)
-            jc = jimok_color(r["jimok"])
-            html = build_html(group)
-            if is_sel:
-                style = {
-                    "color": SELECTED_COLOR, "fillColor": SELECTED_COLOR,
-                    "fillOpacity": 0.5, "weight": 3,
-                }
-            else:
-                style = {
-                    "color": "#ffffff", "fillColor": "#ffffff",
-                    "fillOpacity": 0.0, "weight": 0.5,
-                }
-            highlight = {
-                "color": jc, "fillColor": jc,
-                "fillOpacity": 0.45, "weight": 3,
-            }
-            folium.GeoJson(
-                {"type": "Feature", "geometry": geom, "properties": {}},
-                style_function=(lambda x, s=style: s),
-                highlight_function=(lambda x, h=highlight: h),
-                tooltip=folium.Tooltip(html, sticky=False),
-                popup=folium.Popup(html, max_width=320),
-            ).add_to(m)
-
-        # 2) 마커 (지목별 색) + 항상 보이는 평수·평단가 라벨
-        for pnu in ordered_pnus:
-            group = pnu_groups[pnu]
+        # 네이버 지도용 데이터 직렬화 (라벨 포함)
+        markers_data = []
+        polygons_data = []
+        for pnu, group in pnu_groups.items():
             d, r = group[0]
-            if r["resolved_lon"] is None or r["resolved_lat"] is None:
-                continue
             is_sel = (pnu == prev_selected_pnu)
             jc = jimok_color(r["jimok"])
-            marker_color = SELECTED_COLOR if is_sel else jc
-            radius = 9 if is_sel else 6
             html = build_html(group)
 
-            # 라벨: "1,234평 · 50만/평 · 2025-12"
+            # 라벨: "1,234평·50만/평·2025-12"
             pyeong = int(r["area_m2"] * PYEONG_PER_M2) if r["area_m2"] else 0
             unit = int(r["unit_per_pyeong"]) if r["unit_per_pyeong"] else None
-            # 그룹 중 가장 최근 거래 년월
             latest_ymd = max(
                 (rg["deal_ymd"] for _, rg in group if rg.get("deal_ymd")),
                 default=""
             )
             ym_short = latest_ymd[:7] if latest_ymd else ""
-
             parts = [f"{pyeong:,}평"]
             if unit:
                 parts.append(f"{unit:,}만/평")
@@ -739,20 +747,44 @@ if "result" in st.session_state:
                 parts.append(ym_short)
             label = "·".join(parts)
 
-            folium.CircleMarker(
-                location=[r["resolved_lat"], r["resolved_lon"]],
-                radius=radius, color=marker_color, fill=True,
-                fill_color=marker_color,
-                fill_opacity=0.9, weight=2,
-                tooltip=folium.Tooltip(
-                    label,
-                    permanent=True,
-                    direction="right",
-                    offset=(6, 0),
-                    class_name="zoom-label",
-                ),
-                popup=folium.Popup(html, max_width=320),
-            ).add_to(m)
+            if r["resolved_lon"] and r["resolved_lat"]:
+                markers_data.append({
+                    "pnu": pnu,
+                    "lat": r["resolved_lat"],
+                    "lon": r["resolved_lon"],
+                    "color": jc,
+                    "is_selected": is_sel,
+                    "html": html,
+                    "label": label,
+                })
+            geom = geom_map.get(pnu)
+            if geom:
+                coords = geom["coordinates"]
+                if geom["type"] == "Polygon":
+                    rings = [coords[0]]
+                else:
+                    rings = [poly[0] for poly in coords]
+                polygons_data.append({
+                    "pnu": pnu, "coords": rings,
+                    "color": jc, "is_selected": is_sel, "html": html,
+                })
+
+        # 네이버 HTML 생성 → static 파일 저장 → iframe(src) 임베드
+        naver_html = build_naver_map_html(
+            client_id=NAVER_MAP_CLIENT_ID,
+            center=center, zoom=zoom,
+            markers=markers_data, polygons=polygons_data,
+            road_lines=result.get("road_lines"),
+            height=520, zoom_label_threshold=15,
+        )
+        html_path = os.path.join(STATIC_DIR, "naver_map.html")
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(naver_html)
+        ts = int(datetime.now().timestamp() * 1000)
+        components.iframe(
+            src=f"/app/static/naver_map.html?v={ts}",
+            height=540, scrolling=False,
+        )
 
         if len(results) > max_pins:
             st.caption(
@@ -771,38 +803,13 @@ if "result" in st.session_state:
             )
             st.markdown(legend, unsafe_allow_html=True)
         st.caption(
-            "🔴 선택된 필지  ·  호버하면 지목 색으로 강조  ·  "
-            "마커/필지 클릭하면 표에서 강조"
+            "🔴 선택된 필지  ·  호버하면 필지가 지목 색으로 강조  ·  "
+            "줌 15+ 마커 옆에 평·평단가·년월 라벨  ·  "
+            "ℹ️ 지도→표 동기화는 다음 단계"
         )
 
-        # 마커 라벨은 줌 15 이상에서만 표시 (줌아웃 시 화면 정리)
-        m.add_child(ZoomLabelToggle(threshold=15))
-
-        map_output = st_folium(
-            m, center=center, zoom=zoom,
-            width=None, height=520,
-            returned_objects=["last_object_clicked"],
-            key=st.session_state.get("map_key", "map_init"),
-        )
-
-    # 지도 클릭 → 가장 가까운 거래 PNU
+    # 양방향 동기화 (지도 → 표)는 네이버 SDK + streamlit 양방향 통신 별도 작업
     new_pnu_from_map = None
-    if map_output and map_output.get("last_object_clicked"):
-        clk = map_output["last_object_clicked"]
-        sig = (round(clk["lat"], 7), round(clk["lng"], 7))
-        if st.session_state.get("last_map_click_sig") != sig:
-            best_pnu, best_dist2 = None, float("inf")
-            for d, r in results[:500]:
-                if r["resolved_lat"] is None:
-                    continue
-                d2 = ((r["resolved_lat"] - clk["lat"]) ** 2 +
-                      (r["resolved_lon"] - clk["lng"]) ** 2)
-                if d2 < best_dist2:
-                    best_dist2 = d2
-                    best_pnu = r["resolved_pnu"]
-            if best_pnu:
-                new_pnu_from_map = best_pnu
-                st.session_state.last_map_click_sig = sig
 
     # ===== 표 =====
     with col_table:

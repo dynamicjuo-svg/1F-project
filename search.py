@@ -136,7 +136,42 @@ def parse_query(client, query: str) -> dict:
     return cond
 
 
+# 도로번호 → 도로명 리스트 내장 매핑 (위키 등 외부 자료 기반)
+# 일치하면 LLM 추측보다 우선 사용
+ROAD_NUMBER_TO_NAMES = {
+    # 지방도 제318호선: 화성 ~ 용인 처인구(이동읍·원삼면) ~ 이천 ~ 장호원
+    "지방도318": [
+        "백자로", "백옥대로", "이원로",         # 이동읍 구간
+        "보개원삼로", "백원로", "원설로",        # 원삼면 구간
+    ],
+    # 필요시 다른 노선 추가
+}
+
+
+def _norm_road_query(q: str) -> str:
+    """'지방도 제318호선' / '지방도318호' / '318지방도' 등을 같은 키로 정규화."""
+    s = (q or "").replace(" ", "").replace("호선", "").replace("호", "")
+    # '318지방도' → '지방도318'로 통일
+    import re
+    m = re.match(r"^(\d+)(지방도|국도|국가지원지방도)$", s)
+    if m:
+        s = m.group(2) + m.group(1)
+    m = re.match(r"^제?(\d+)$", s)  # 제318 또는 그냥 318
+    return s
+
+
 def map_road(client, road_query, candidates):
+    # 1) 내장 매핑 사전 우선
+    norm = _norm_road_query(road_query)
+    for key, names in ROAD_NUMBER_TO_NAMES.items():
+        if _norm_road_query(key) == norm:
+            return {
+                "matched": names,  # 리스트
+                "confidence": "exact",
+                "reason": f"내장 노선 매핑 ({len(names)}개 도로)",
+            }
+
+    # 2) 없으면 LLM에 단일 후보 매핑 요청
     if not candidates:
         return {"matched": None, "confidence": "low"}
     cand_text = ", ".join(f'"{c}"' for c in candidates[:80])
