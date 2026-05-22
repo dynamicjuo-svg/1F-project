@@ -14,10 +14,10 @@ trades.db
 *.db-wal
 *.db-shm
 
-# V-World 필지 캐시 (build 시 자동 생성됨)
+# V-World 필지 캐시 (build 시 자동 생성됨, 크기 큼)
 cache_*.json
-region_prefix_cache.json
 wonsam_cache.json
+# region_prefix_cache.json은 작은 정적 매핑이라 GitHub에 올림
 
 # Streamlit 정적/시크릿
 static/naver_map.html
