@@ -1,0 +1,1 @@
+web: python -X utf8 build_db.py && python -X utf8 build_polygons.py && python -X utf8 build_roads.py && streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true --browser.gatherUsageStats=false

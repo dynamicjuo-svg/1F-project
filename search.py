@@ -1,0 +1,400 @@
+"""
+search.py v2 — 확장된 자연어 토지 실거래 검색.
+
+지원하는 표현 (이전 + 확장):
+  지역·도로·기간·반경·지목·면적 (v1)
+  + 수치: "평당 100 미만", "1억 이하", "5천만~2억"
+  + 절대 시간: "2024년", "2023년 상반기", "올해"
+  + 필터: "단독매매만", "지분거래 제외", "임야 제외"
+  + 정렬: "평단가 낮은 순", "면적 큰 순", "최근 거래순"
+
+사용:
+    python -X utf8 search.py
+    python -X utf8 search.py "원삼면 임야 평당 100 미만 최근 1년"
+"""
+
+import json
+import os
+import sqlite3
+import statistics
+import sys
+from collections import Counter
+from datetime import datetime, timedelta
+from math import cos, radians
+
+import anthropic
+from api_keys import ANTHROPIC_KEY
+
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(HERE, "trades.db")
+REGION_CACHE = os.path.join(HERE, "region_prefix_cache.json")
+MODEL = "claude-haiku-4-5-20251001"
+
+
+# =====================================================================
+#  자연어 파서 (확장된 스키마)
+# =====================================================================
+PARSER_SYSTEM = """당신은 한국 토지 실거래가 검색 시스템의 자연어 질의 파서입니다.
+사용자 한 줄 질의를 JSON 객체로만 출력하세요.
+
+스키마 (모든 키 포함, 없으면 null):
+{
+  "sigg": "시·군·구 (예: '용인시 처인구')",
+  "emd_list": "읍·면·동 배열 (예: ['원삼면'] 또는 ['원삼면','백암면']). 한 곳이어도 배열로",
+  "road_query": "도로 식별자 ('덕평로' 또는 '지방도318')",
+  "radius_m": "도로 반경 m(정수). '5키로'='5km'=5000",
+  "jimok_list": "지목 배열. 가능: 전,답,과수원,목장용지,임야,대,공장용지,창고용지,주차장,주유소용지,도로,철도용지,제방,하천,구거,유지,양어장,수도용지,공원,체육용지,유원지,종교용지,사적지,묘지,잡종지",
+  "exclude_jimok_list": "제외할 지목 배열",
+  "period_months": "최근 N개월 (현재 기준 역산). '1년간'→12, '최근 6개월'→6",
+  "year_start": "절대 연도 시작(정수). '2024년'→2024",
+  "year_end": "절대 연도 끝(정수)",
+  "month_start": "월 시작(1~12). '상반기'→1, '하반기'→7",
+  "month_end": "월 끝. '상반기'→6, '하반기'→12",
+  "min_area_m2": "최소 면적 m². '1000평'→3306",
+  "max_area_m2": "최대 면적 m²",
+  "min_deal_amount": "최소 거래금액(만원). '1억'→10000, '5천만'→5000",
+  "max_deal_amount": "최대 거래금액(만원)",
+  "min_unit_per_pyeong": "최소 평단가(만원/평)",
+  "max_unit_per_pyeong": "최대 평단가(만원/평)",
+  "exclude_shared": "true=공유지분 제외(단독매매만), false/null=모두",
+  "sort_by": "정렬 기준: 'deal_ymd'|'unit_per_pyeong'|'area_m2'|'deal_amount'",
+  "sort_order": "'asc'(낮은순/오래된순) 또는 'desc'(높은순/최근). 기본 'desc'"
+}
+
+규칙:
+- "1억"=10000, "5천만"=5000, "2억5천"=25000 (만원 단위)
+- "평당 100"·"평당 100만원" → 평단가 100만원/평
+- "올해"·"이번해" → year_start=year_end=2025 (DB 최신)
+- "작년" → year_start=year_end=2024
+- "재작년" → year_start=year_end=2023
+- "2024년 상반기" → year_start=year_end=2024, month_start=1, month_end=6
+- "2023년 하반기" → year_start=year_end=2023, month_start=7, month_end=12
+- "최근 N개월"·"최근 N년" → period_months=N개월 (N년=N*12, 절대 시간이 명시되면 그게 우선)
+- **"N년치"**·**"N년간"**·**"N년동안"** → period_months=N*12 (예: "5년치"=60)
+- "단독매매만"·"지분거래 제외" → exclude_shared=true
+- "평단가 낮은 순" → sort_by=unit_per_pyeong, sort_order=asc
+- "최근 거래순" → sort_by=deal_ymd, sort_order=desc
+- "면적 큰 순"·"넓은 순" → sort_by=area_m2, sort_order=desc
+- "비싼 순"·"고가 순" → sort_by=deal_amount, sort_order=desc
+- "임야 제외" → exclude_jimok_list=['임야']
+- "100평 이상" → min_area_m2=330 (= 100*3.3058 반올림)
+- 1평 ≈ 3.3058㎡, 시군구가 안 명시되어도 읍면동으로 추정 가능하면 채울 것
+- "5키로"·"5킬로"·"5km" → radius_m=5000
+- "원삼면 백암면", "원삼면과 백암면", "두 면" 같이 여러 읍·면·동이 명시되면
+  emd_list에 모두 넣을 것: ["원삼면", "백암면"]
+
+**복합 명령 처리** (한 문장에 여러 조건이 순차적으로 등장하는 경우):
+- "찾아보고", "찾아봐", "보여줘", "알려줘" 등 검색 동사는 무시
+- "이중에", "그중에", "그 중에서", "거기서", "그것중", "여기서" 등 부분 한정 표현은
+  앞뒤 조건을 **모두 합쳐** 단일 검색으로 처리 (AND 조건)
+- 예: "백암면 100평 이상 5년치 거래 찾아보고 이중에 임야인걸 찾아봐"
+  → emd='백암면', min_area_m2=330, period_months=60, jimok_list=['임야'] (모두 AND)
+- 예: "원삼면 임야 거래 보여줘, 그 중에서 평당 100 미만만"
+  → emd='원삼면', jimok_list=['임야'], max_unit_per_pyeong=100
+
+추정 못 하는 필드는 null."""
+
+
+ROAD_MAPPER_SYSTEM = """당신은 한국 도로 매핑 전문가입니다.
+사용자가 입력한 도로 식별자에 가장 잘 맞는 도로명을 후보 목록에서 고르세요.
+
+응답은 JSON 객체로만:
+{"matched": "선택한 도로명 또는 null", "confidence": "high|mid|low", "reason": "한 문장"}
+
+도로번호 매핑 지식 참고:
+- 지방도318: 경기도 안성-원삼-양지 → '덕평로' 등
+- 지방도325: 안성 일대
+- 일반국도42: 인천-수원-이천
+- 일반국도17: 수원-용인-안양"""
+
+
+def parse_query(client, query: str) -> dict:
+    msg = client.messages.create(
+        model=MODEL, max_tokens=600, system=PARSER_SYSTEM,
+        messages=[
+            {"role": "user", "content": query},
+            {"role": "assistant", "content": "{"},
+        ],
+    )
+    text = "{" + msg.content[0].text
+    # LLM이 가끔 여러 JSON 객체나 뒤에 설명문을 붙임 → 첫 완전 객체만 추출
+    depth = 0
+    end_idx = len(text)
+    for i, c in enumerate(text):
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                end_idx = i + 1
+                break
+    cond = json.loads(text[:end_idx])
+    # 하위 호환: 옛 'emd' 키만 채워졌으면 emd_list로 정규화
+    if cond.get("emd") and not cond.get("emd_list"):
+        cond["emd_list"] = [cond["emd"]]
+    return cond
+
+
+def map_road(client, road_query, candidates):
+    if not candidates:
+        return {"matched": None, "confidence": "low"}
+    cand_text = ", ".join(f'"{c}"' for c in candidates[:80])
+    msg = client.messages.create(
+        model=MODEL, max_tokens=300, system=ROAD_MAPPER_SYSTEM,
+        messages=[
+            {"role": "user", "content": f"입력: '{road_query}'\n후보: [{cand_text}]"},
+            {"role": "assistant", "content": "{"},
+        ],
+    )
+    try:
+        return json.loads("{" + msg.content[0].text)
+    except json.JSONDecodeError:
+        return {"matched": None, "confidence": "low"}
+
+
+# =====================================================================
+#  거리 함수
+# =====================================================================
+def _seg_dist2(px, py, ax, ay, bx, by):
+    dx, dy = bx - ax, by - ay
+    if dx == 0 and dy == 0:
+        return (px - ax) ** 2 + (py - ay) ** 2
+    t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)
+    t = max(0.0, min(1.0, t))
+    return (px - (ax + t * dx)) ** 2 + (py - (ay + t * dy)) ** 2
+
+
+def point_to_line_m(p_lon, p_lat, coords):
+    if not coords or len(coords) < 2:
+        return float("inf")
+    lon_m = 111049.0 * cos(radians(p_lat))
+    lat_m = 111049.0
+    px = p_lon * lon_m
+    py = p_lat * lat_m
+    min_d2 = float("inf")
+    for i in range(len(coords) - 1):
+        ax, ay = coords[i][0] * lon_m, coords[i][1] * lat_m
+        bx, by = coords[i + 1][0] * lon_m, coords[i + 1][1] * lat_m
+        d2 = _seg_dist2(px, py, ax, ay, bx, by)
+        if d2 < min_d2:
+            min_d2 = d2
+    return min_d2 ** 0.5
+
+
+# =====================================================================
+#  SQL 빌드 + 검색
+# =====================================================================
+def build_period_range(cond, max_ymd):
+    """기간 조건 → (start_ymd, end_ymd) 문자열 'YYYY-MM-DD'."""
+    # 절대 시간이 우선
+    if cond.get("year_start") is not None:
+        ys = int(cond["year_start"])
+        ye = int(cond.get("year_end") or ys)
+        ms = int(cond.get("month_start") or 1)
+        me = int(cond.get("month_end") or 12)
+        return f"{ys:04d}-{ms:02d}-01", f"{ye:04d}-{me:02d}-31"
+    if cond.get("period_months"):
+        months = int(cond["period_months"])
+        end_dt = datetime.strptime(max_ymd[:10], "%Y-%m-%d") if max_ymd else datetime.now()
+        start_dt = end_dt - timedelta(days=int(months * 30.4))
+        return start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d")
+    return None, None
+
+
+def search(query: str):
+    print("=" * 90)
+    print(f" 질의: {query}")
+    print("=" * 90)
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+
+    # [1] 자연어 파싱
+    try:
+        cond = parse_query(client, query)
+    except Exception as e:
+        print(f"❌ 파싱 실패: {e}")
+        return
+    print("\n[1] 자연어 파싱 결과 (null 제외)")
+    for k, v in cond.items():
+        if v is not None and v != [] and v != "":
+            print(f"   {k:22s} = {v!r}")
+
+    # [2] 도로 매핑
+    matched_road = None
+    road_lines = None
+    if cond.get("road_query"):
+        rq = cond["road_query"]
+        direct = conn.execute(
+            "SELECT 1 FROM roads WHERE road_name = ? LIMIT 1", (rq,)
+        ).fetchone()
+        if direct:
+            matched_road = rq
+            print(f"\n[2] 도로: '{rq}' DB 직접 일치")
+        else:
+            cands = [r[0] for r in conn.execute(
+                "SELECT DISTINCT road_name FROM roads "
+                "WHERE rd_rank_h IN ('지방도', '국가지원지방도', '일반국도') "
+                "AND road_name NOT IN ('', '-') ORDER BY road_name"
+            )]
+            info = map_road(client, rq, cands)
+            matched_road = info.get("matched")
+            print(f"\n[2] 도로 매핑: '{rq}' → {matched_road!r} ({info.get('confidence')})")
+            if info.get("reason"):
+                print(f"   이유: {info['reason']}")
+
+    # [3] WHERE 절 빌드
+    where = ["resolved_pnu IS NOT NULL"]
+    params = []
+
+    # 기간
+    max_ymd = conn.execute("SELECT MAX(deal_ymd) FROM trades").fetchone()[0]
+    start_ymd, end_ymd = build_period_range(cond, max_ymd)
+    if start_ymd:
+        where.append("deal_ymd BETWEEN ? AND ?")
+        params.extend([start_ymd, end_ymd])
+        print(f"\n[3] 기간: {start_ymd} ~ {end_ymd}")
+
+    if cond.get("emd"):
+        where.append("umd_name LIKE ?")
+        params.append(cond["emd"] + "%")
+
+    if cond.get("jimok_list"):
+        jms = cond["jimok_list"]
+        where.append(f"jimok IN ({','.join('?' * len(jms))})")
+        params += jms
+    if cond.get("exclude_jimok_list"):
+        ex = cond["exclude_jimok_list"]
+        where.append(f"jimok NOT IN ({','.join('?' * len(ex))})")
+        params += ex
+
+    if cond.get("min_area_m2") is not None:
+        where.append("area_m2 >= ?")
+        params.append(cond["min_area_m2"])
+    if cond.get("max_area_m2") is not None:
+        where.append("area_m2 <= ?")
+        params.append(cond["max_area_m2"])
+
+    if cond.get("min_deal_amount") is not None:
+        where.append("deal_amount >= ?")
+        params.append(cond["min_deal_amount"])
+    if cond.get("max_deal_amount") is not None:
+        where.append("deal_amount <= ?")
+        params.append(cond["max_deal_amount"])
+
+    if cond.get("min_unit_per_pyeong") is not None:
+        where.append("unit_per_pyeong >= ?")
+        params.append(cond["min_unit_per_pyeong"])
+    if cond.get("max_unit_per_pyeong") is not None:
+        where.append("unit_per_pyeong <= ?")
+        params.append(cond["max_unit_per_pyeong"])
+
+    # 도로 반경 박스 좁힘
+    if matched_road and cond.get("radius_m"):
+        b = conn.execute(
+            "SELECT MIN(min_lon), MAX(max_lon), MIN(min_lat), MAX(max_lat) "
+            "FROM roads WHERE road_name = ?", (matched_road,)
+        ).fetchone()
+        if b and b[0] is not None:
+            rad_deg = cond["radius_m"] / 111049.0
+            where += ["resolved_lon BETWEEN ? AND ?", "resolved_lat BETWEEN ? AND ?"]
+            params += [b[0] - rad_deg, b[1] + rad_deg, b[2] - rad_deg, b[3] + rad_deg]
+            road_lines = [json.loads(r[0]) for r in conn.execute(
+                "SELECT geometry_json FROM roads WHERE road_name = ?", (matched_road,))]
+
+    # 정렬
+    sort_by = cond.get("sort_by") or "deal_ymd"
+    sort_order = (cond.get("sort_order") or "desc").lower()
+    if sort_by not in ("deal_ymd", "unit_per_pyeong", "area_m2", "deal_amount"):
+        sort_by = "deal_ymd"
+    sort_order = "ASC" if sort_order == "asc" else "DESC"
+
+    sql = (
+        "SELECT id, umd_name, jimok, area_m2, deal_amount, deal_ymd, "
+        "resolved_pnu, resolved_jibun, resolved_lon, resolved_lat, "
+        "unit_per_pyeong, match_confidence "
+        "FROM trades WHERE " + " AND ".join(where) +
+        f" ORDER BY {sort_by} {sort_order}"
+    )
+    bbox_results = list(conn.execute(sql, params))
+    print(f"\n[4] SQL 1차 필터: {len(bbox_results)}건  (정렬: {sort_by} {sort_order})")
+
+    # 도로 정확 거리
+    if road_lines:
+        radius_m = cond["radius_m"]
+        results = []
+        for r in bbox_results:
+            d = min(point_to_line_m(r["resolved_lon"], r["resolved_lat"], line)
+                    for line in road_lines)
+            if d <= radius_m:
+                results.append((d, r))
+        if sort_by == "deal_ymd":
+            results.sort(key=lambda x: x[1]["deal_ymd"], reverse=(sort_order == "DESC"))
+        print(f"   도로 반경 {radius_m}m 정확 필터: {len(results)}건")
+    else:
+        results = [(None, r) for r in bbox_results]
+
+    # 공유지분 제외
+    if cond.get("exclude_shared"):
+        pnu_count = Counter(r["resolved_pnu"] for _, r in results)
+        before = len(results)
+        results = [(d, r) for d, r in results if pnu_count[r["resolved_pnu"]] == 1]
+        print(f"   공유지분 제외 후: {len(results)}건  (제외 {before - len(results)})")
+
+    # 결과 출력
+    print("\n" + "=" * 90)
+    print(f" 결과 {len(results)}건")
+    print("=" * 90)
+    if not results:
+        print("\n조건 만족 거래 없음.")
+        conn.close()
+        return
+
+    # 시세 요약
+    high = [(d, r) for d, r in results if r["match_confidence"] == "high"]
+    pnu_count = Counter(r["resolved_pnu"] for _, r in high)
+    solo = [(d, r) for d, r in high if pnu_count[r["resolved_pnu"]] == 1]
+    units = [r["unit_per_pyeong"] for _, r in solo if r["unit_per_pyeong"]]
+    if units:
+        print(f"\n시세 (high·단독매매 {len(solo)}건 기준):")
+        print(f"   평단가 중앙값 {statistics.median(units):>8,.0f} 만원/평")
+        print(f"   평단가 평균   {sum(units)/len(units):>8,.0f} 만원/평")
+        print(f"   평단가 범위   {min(units):,.0f} ~ {max(units):,.0f}")
+        prices = [r["deal_amount"] for _, r in solo]
+        print(f"   금액 중앙값   {statistics.median(prices):>8,.0f} 만원")
+
+    # 미리보기
+    print(f"\n[거래 미리보기 — 최대 15건, {sort_by} {sort_order} 정렬]")
+    head = "거리   " if road_lines else ""
+    print(f"   {head}{'동·리':16s}{'지번':14s}{'지목':4s} "
+          f"{'면적':>8s}  {'금액':>10s}  {'평단가':>9s}  시기        신뢰도")
+    print("   " + "-" * 102)
+    for d, r in results[:15]:
+        dstr = f"{d:>4.0f}m " if d is not None else ""
+        unit = r["unit_per_pyeong"] or 0
+        print(f"   {dstr}{r['umd_name'][:16]:16s}{(r['resolved_jibun'] or '?')[:14]:14s}"
+              f"{r['jimok']:4s} {r['area_m2']:>7,.0f}㎡  "
+              f"{r['deal_amount']:>9,}만원  {unit:>6,.0f}만원/평  "
+              f"{r['deal_ymd'][:10]}  {r['match_confidence']}")
+
+    conn.close()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        q = " ".join(sys.argv[1:])
+    else:
+        # 테스트 케이스 — 확장 표현 검증
+        tests = [
+            "원삼면 임야 평당 100 미만 최근 1년",
+            "처인구 2024년 상반기 전·답 단독매매만",
+            "원삼면 임야 5천만~2억 평단가 낮은 순",
+            "용인 덕평로 반경 3km 임야 1억 이하 면적 큰 순",
+        ]
+        for tq in tests:
+            search(tq)
+            print("\n\n")
+        sys.exit(0)
+    search(q)

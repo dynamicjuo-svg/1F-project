@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 환경변수 / 키 (절대 push 금지)
+.env
+.env.local
+
+# SQLite 데이터베이스 (크기 큼, Railway에서 빌드 시 재생성)
+trades.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# V-World 필지 캐시 (build 시 자동 생성됨)
+cache_*.json
+region_prefix_cache.json
+wonsam_cache.json
+
+# Streamlit 정적/시크릿
+static/naver_map.html
+static/*.html
+.streamlit/secrets.toml
+
+# IDE
+.idea/
+.vscode/

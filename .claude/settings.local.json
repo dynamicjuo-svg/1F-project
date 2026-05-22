@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py --version)",
+      "Bash(python \"C:/Users/이주오/Desktop/J/jibun_matcher.py\")",
+      "Bash(python -m pip install anthropic)",
+      "Bash(python -m pip install streamlit folium streamlit-folium)",
+      "Bash(python -m streamlit run app.py --server.headless true --browser.gatherUsageStats false)",
+      "Bash(python -m pip install openpyxl)",
+      "Bash(python -X utf8 search.py \"백암면 100평이상 5년치의 실거래가를 찾아보고 이중에 지목이 임야인걸 찾아봐\")",
+      "PowerShell(Get-NetTCPConnection -LocalPort 8501 -ErrorAction SilentlyContinue | ForEach-Object { try { Stop-Process -Id $_.OwningProcess -Force; \"Killed PID $\\($_.OwningProcess\\)\" } catch { \"Failed to kill $\\($_.OwningProcess\\)\" } })",
+      "Bash(python -m streamlit run app.py)",
+      "Bash(python -X utf8 api_keys.py)"
+    ]
+  }
+}
