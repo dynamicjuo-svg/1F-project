@@ -24,6 +24,32 @@ import folium
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+
+# 네이버 지도 양방향 컴포넌트 (declare_component) — 클릭 시 setComponentValue로 PNU 반환
+_NAVER_MAP_COMPONENT = components.declare_component(
+    "of_naver_map",
+    path=os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "naver_map_component"),
+)
+
+
+def of_naver_map(client_id, center, zoom, markers, polygons,
+                  road_lines=None, sel_color="#1e40af",
+                  zoom_label_threshold=15, recenter=False, key=None):
+    """네이버 지도 양방향 컴포넌트 호출. 폴리곤/마커 클릭 시 dict 반환."""
+    return _NAVER_MAP_COMPONENT(
+        client_id=client_id,
+        center=list(center),
+        zoom=int(zoom),
+        markers=markers or [],
+        polygons=polygons or [],
+        road_lines=road_lines or [],
+        sel_color=sel_color,
+        zoom_label_threshold=int(zoom_label_threshold),
+        recenter=bool(recenter),
+        default=None,
+        key=key,
+    )
 from branca.element import MacroElement
 from jinja2 import Template
 from streamlit_folium import st_folium
@@ -340,6 +366,21 @@ if (typeof naver === 'undefined' || !naver.maps) {{
       naver.maps.Event.addListener(polygon, 'click', e => info.open(map, e.coord));
     }}
   }});
+
+  // 선택된 필지가 있으면 그 폴리곤 bounds에 자동 fit (필지 모양대로 줌인)
+  const selPolygon = polygons.find(p => p.is_selected);
+  if (selPolygon) {{
+    const bounds = new naver.maps.LatLngBounds();
+    selPolygon.coords.forEach(ring => {{
+      ring.forEach(c => bounds.extend(new naver.maps.LatLng(c[1], c[0])));
+    }});
+    map.fitBounds(bounds, {{ top: 80, right: 60, bottom: 60, left: 60 }});
+    // fitBounds 후 자동 마진. 너무 가까이 붙으면 한 단계만 빼서 시야 확보
+    setTimeout(() => {{
+      const z = map.getZoom();
+      if (z > 20) map.setZoom(20);
+    }}, 100);
+  }}
 
   // 마커 — 지목별 색 + 줌 임계값 기반 라벨
   const markers = {markers_json};
@@ -948,7 +989,9 @@ if go and query:
     st.session_state.selected_pnu = None
     st.session_state.last_map_click_sig = None
     st.session_state.last_table_rows = []
-    # 검색이 새로 일어났을 때만 지도 key를 갱신 (그 외에는 동일 key 유지)
+    # 검색이 새로 일어났을 때만 지도 중심 재설정 (지도 컴포넌트가 recenter=True 받음)
+    st.session_state._of_recenter_pending = True
+    st.session_state._of_last_map_click_ts = None
     st.session_state.map_key = f"map_{datetime.now().timestamp()}"
 
 # 결과 표시
@@ -1054,6 +1097,153 @@ if "result" in st.session_state:
 
     # 이전 rerun에서 결정된 selected_pnu (지도·표 그리기에 사용)
     prev_selected_pnu = st.session_state.get("selected_pnu")
+
+    # 선택된 PNU가 있으면 그 필지의 모든 거래 원본 데이터 카드 표시
+    if prev_selected_pnu:
+        sel_conn = get_conn()
+        sel_trades = list(sel_conn.execute(
+            """
+            SELECT id, sigg_cd, umd_name, jimok, area_m2, jibun_masked, is_san,
+                   deal_amount, deal_year, deal_month, deal_day, deal_ymd,
+                   land_use, dealing_gbn,
+                   match_confidence, resolved_pnu, resolved_jibun,
+                   resolved_area_m2, resolved_lon, resolved_lat, resolved_jiga,
+                   unit_per_pyeong, candidates_count, share_label
+            FROM trades WHERE resolved_pnu = ?
+            ORDER BY deal_ymd DESC
+            """,
+            (prev_selected_pnu,),
+        ))
+        sel_parcel = sel_conn.execute(
+            """
+            SELECT pnu, jibun, jimok, area_m2, jiga, addr,
+                   elevation_m, slope_deg, has_road_access,
+                   shape_type, zone_type, prefix8
+            FROM parcels WHERE pnu = ?
+            """,
+            (prev_selected_pnu,),
+        ).fetchone()
+
+        n_trades = len(sel_trades)
+        with st.container(border=True):
+            head_cols = st.columns([3, 1])
+            with head_cols[0]:
+                if sel_parcel:
+                    py = (sel_parcel["area_m2"] / PYEONG_PER_M2
+                          if sel_parcel["area_m2"] else 0)
+                    st.markdown(
+                        f"### 📄 선택 필지: **{sel_parcel['jibun']}** "
+                        f"({sel_parcel['jimok']}, "
+                        f"{int(sel_parcel['area_m2']):,}㎡ · {py:,.0f}평)"
+                    )
+                    addr = sel_parcel["addr"] or ""
+                    sub_bits = []
+                    if addr: sub_bits.append(addr)
+                    sub_bits.append(f"PNU `{prev_selected_pnu}`")
+                    sub_bits.append(f"거래 **{n_trades}건** 매칭됨")
+                    st.caption(" · ".join(sub_bits))
+                else:
+                    st.markdown(f"### 📄 선택 PNU: `{prev_selected_pnu}`")
+            with head_cols[1]:
+                if st.button("✕ 선택 해제", use_container_width=True,
+                             key="clear_selection"):
+                    st.session_state.selected_pnu = None
+                    st.session_state.last_table_rows = []
+                    st.rerun()
+
+            # 필지 기본 정보 행
+            if sel_parcel:
+                info_cols = st.columns(6)
+                info_cols[0].metric(
+                    "공시지가",
+                    f"{int(sel_parcel['jiga']):,}원/㎡" if sel_parcel['jiga'] else "—",
+                )
+                info_cols[1].metric(
+                    "해발",
+                    f"{sel_parcel['elevation_m']:.0f}m"
+                    if sel_parcel["elevation_m"] is not None else "—",
+                )
+                info_cols[2].metric(
+                    "경사",
+                    f"{sel_parcel['slope_deg']:.1f}°"
+                    if sel_parcel["slope_deg"] is not None else "—",
+                )
+                info_cols[3].metric(
+                    "도로 접면",
+                    "접면" if sel_parcel["has_road_access"] == 1
+                    else ("맹지" if sel_parcel["has_road_access"] == 0 else "—"),
+                )
+                info_cols[4].metric("형상", sel_parcel["shape_type"] or "—")
+                info_cols[5].metric("용도지역", sel_parcel["zone_type"] or "—")
+
+            # 거래 원본 데이터 (API 그대로)
+            st.markdown(
+                f"<div style='margin-top:14px;font-weight:600;"
+                f"color:{BRAND_NAVY_DEEP};font-size:13.5px;'>"
+                f"📋 국토부 토지매매 실거래 원본 데이터</div>",
+                unsafe_allow_html=True,
+            )
+            for i, t in enumerate(sel_trades):
+                with st.expander(
+                    f"#{i+1}  {t['deal_ymd'][:10]}  "
+                    f"{t['deal_amount']:,}만원  "
+                    f"{t['area_m2']:,.0f}㎡  "
+                    f"mask=`{t['jibun_masked']}`  "
+                    f"[{t['match_confidence']}]",
+                    expanded=(i == 0),
+                ):
+                    raw_cols = st.columns(2)
+                    with raw_cols[0]:
+                        st.markdown(
+                            "<b style='font-size:12px;color:#475569;'>"
+                            "▌ API 원본 (국토부)</b>",
+                            unsafe_allow_html=True,
+                        )
+                        api_raw = {
+                            "sggCd (시군구코드)": t["sigg_cd"],
+                            "umdNm (법정동)": t["umd_name"],
+                            "jimok (지목)": t["jimok"],
+                            "dealArea (거래면적㎡)": t["area_m2"],
+                            "jibun (지번-원본 별표)":
+                                ("산 " if t["is_san"] else "") + (t["jibun_masked"] or ""),
+                            "dealAmount (거래금액 만원)": t["deal_amount"],
+                            "dealYear/Month/Day":
+                                f"{t['deal_year']} / {t['deal_month']} / {t['deal_day']}",
+                            "landUse (용도지역)": t["land_use"] or "—",
+                            "dealingGbn (거래유형)": t["dealing_gbn"] or "—",
+                        }
+                        for k, v in api_raw.items():
+                            st.markdown(
+                                f"<div style='font-size:13px;line-height:1.7;'>"
+                                f"<span style='color:#64748b;'>{k}</span>: "
+                                f"<b>{v}</b></div>",
+                                unsafe_allow_html=True,
+                            )
+                    with raw_cols[1]:
+                        st.markdown(
+                            "<b style='font-size:12px;color:#475569;'>"
+                            "▌ OneFamily 복원·매칭 결과</b>",
+                            unsafe_allow_html=True,
+                        )
+                        of_data = {
+                            "복원 지번": t["resolved_jibun"] or "—",
+                            "PNU (19자리)": t["resolved_pnu"] or "—",
+                            "매칭 신뢰도": t["match_confidence"],
+                            "후보 수": t["candidates_count"],
+                            "평단가": (f"{t['unit_per_pyeong']:,.0f} 만원/평"
+                                      if t["unit_per_pyeong"] else "—"),
+                            "필지 공시지가": (f"{t['resolved_jiga']:,.0f} 원/㎡"
+                                            if t["resolved_jiga"] else "—"),
+                            "공유지분 라벨": t["share_label"] or "정상매칭",
+                        }
+                        for k, v in of_data.items():
+                            st.markdown(
+                                f"<div style='font-size:13px;line-height:1.7;'>"
+                                f"<span style='color:#64748b;'>{k}</span>: "
+                                f"<b>{v}</b></div>",
+                                unsafe_allow_html=True,
+                            )
+        st.divider()
 
     col_map, col_table = st.columns([1, 1])
 
@@ -1202,22 +1392,32 @@ if "result" in st.session_state:
                     "color": jc, "is_selected": is_sel, "html": html,
                 })
 
-        # 네이버 HTML 생성 → static 파일 저장 → iframe(src) 임베드
-        naver_html = build_naver_map_html(
+        # 양방향 네이버 지도 컴포넌트 (declare_component) — 클릭 이벤트 수신
+        # recenter: 검색이 새로 일어났을 때만 True (지도 중심 재설정)
+        do_recenter = bool(st.session_state.get("_of_recenter_pending"))
+        if do_recenter:
+            st.session_state._of_recenter_pending = False
+        map_event = of_naver_map(
             client_id=NAVER_MAP_CLIENT_ID,
             center=center, zoom=zoom,
             markers=markers_data, polygons=polygons_data,
             road_lines=result.get("road_lines"),
-            height=520, zoom_label_threshold=15,
+            sel_color=SELECTED_COLOR,
+            zoom_label_threshold=15,
+            recenter=do_recenter,
+            key="of_naver_map",
         )
-        html_path = os.path.join(STATIC_DIR, "naver_map.html")
-        with open(html_path, "w", encoding="utf-8") as f:
-            f.write(naver_html)
-        ts = int(datetime.now().timestamp() * 1000)
-        components.iframe(
-            src=f"/app/static/naver_map.html?v={ts}",
-            height=540, scrolling=False,
-        )
+        # 지도 클릭 → PNU 동기화 (양방향)
+        if isinstance(map_event, dict) and map_event.get("type") == "pnu_click":
+            clicked_pnu = map_event.get("pnu")
+            last_click_ts = st.session_state.get("_of_last_map_click_ts")
+            this_ts = map_event.get("ts")
+            if clicked_pnu and this_ts != last_click_ts:
+                st.session_state._of_last_map_click_ts = this_ts
+                if clicked_pnu != st.session_state.get("selected_pnu"):
+                    st.session_state.selected_pnu = clicked_pnu
+                    st.session_state.last_table_rows = []
+                    st.rerun()
 
         if len(results) > max_pins:
             st.caption(
@@ -1238,10 +1438,11 @@ if "result" in st.session_state:
         st.caption(
             "🔴 선택된 필지  ·  호버하면 필지가 지목 색으로 강조  ·  "
             "줌 15+ 마커 옆에 평·평단가·년월 라벨  ·  "
-            "ℹ️ 지도→표 동기화는 다음 단계"
+            "✅ 지도↔표 양방향 동기화 작동"
         )
 
-    # 양방향 동기화 (지도 → 표)는 네이버 SDK + streamlit 양방향 통신 별도 작업
+    # 양방향: 지도 클릭으로 selected_pnu가 변경됐다면 위쪽 of_naver_map 호출이
+    # 이미 st.rerun을 트리거함. 여기서는 placeholder만 둠 (구 흐름 호환).
     new_pnu_from_map = None
 
     # ===== 표 =====

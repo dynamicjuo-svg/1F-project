@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body, html { margin: 0; padding: 0; font-family: system-ui, sans-serif; background: #fafafa; }
+  #map { width: 100%; height: 540px; }
+  .info-card {
+    padding: 10px 12px; font-size: 12px; line-height: 1.5;
+    max-width: 320px; background: white;
+    border: 1px solid #d4d4d8; border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  .marker-wrap { display: flex; align-items: center; cursor: pointer; }
+  .marker-dot {
+    border-radius: 50%; border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .marker-label {
+    margin-left: 6px;
+    background: rgba(255,255,255,0.92);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px; font-weight: 500;
+    color: #1f2937; white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    display: none;
+  }
+  .marker-label.show { display: inline-block; }
+  #of-error {
+    padding: 24px; color: #dc2626; font-size: 13px; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+// ============================================================================
+//  Streamlit Component Bridge (vanilla JS, no external lib)
+// ============================================================================
+function sendMessageToStreamlitClient(type, data) {
+  const out = Object.assign({ isStreamlitMessage: true, type: type }, data || {});
+  window.parent.postMessage(out, "*");
+}
+const Streamlit = {
+  setComponentReady: function() {
+    sendMessageToStreamlitClient("streamlit:componentReady", { apiVersion: 1 });
+  },
+  setFrameHeight: function(h) {
+    sendMessageToStreamlitClient("streamlit:setFrameHeight", { height: h });
+  },
+  setComponentValue: function(v) {
+    sendMessageToStreamlitClient("streamlit:setComponentValue", {
+      value: v,
+      dataType: (typeof v === "object" && v !== null) ? "json" : "string",
+    });
+  },
+  RENDER_EVENT: "streamlit:render",
+  events: {
+    addEventListener: function(type, cb) {
+      window.addEventListener("message", function(event) {
+        if (event.data && event.data.type === type) {
+          cb({ detail: event.data });
+        }
+      });
+    }
+  }
+};
+
+// ============================================================================
+//  지도 상태 — 한 번만 렌더, 재 렌더 시 데이터만 교체
+// ============================================================================
+let _sdkLoaded = false;
+let _map = null;
+let _drawnPolygons = [];
+let _drawnMarkers = [];
+let _drawnRoadLines = [];
+let _cadastralLayer = null;
+
+function loadSDK(clientId, cb) {
+  if (_sdkLoaded) { cb(); return; }
+  const s = document.createElement("script");
+  s.src = "https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=" + clientId;
+  s.onload = function() { _sdkLoaded = true; cb(); };
+  s.onerror = function() {
+    document.getElementById("map").innerHTML =
+      '<div id="of-error"><b>네이버 지도 SDK 로드 실패</b><br>'
+      + '키 또는 네트워크를 확인하세요.<br>'
+      + 'Client ID: <code>' + clientId + '</code></div>';
+  };
+  document.head.appendChild(s);
+}
+
+function clearOverlays() {
+  _drawnPolygons.forEach(p => p.setMap(null));
+  _drawnPolygons = [];
+  _drawnMarkers.forEach(m => m.setMap(null));
+  _drawnMarkers = [];
+  _drawnRoadLines.forEach(l => l.setMap(null));
+  _drawnRoadLines = [];
+}
+
+function jimokColor(j) {
+  const map = {
+    "전": "#84cc16", "답": "#65a30d", "과수원": "#15803d", "목장용지": "#10b981",
+    "임야": "#16a34a", "대": "#f97316", "공장용지": "#7c3aed", "창고용지": "#6366f1",
+    "주차장": "#64748b", "주유소용지": "#a855f7", "도로": "#9ca3af", "철도용지": "#71717a",
+    "제방": "#0ea5e9", "하천": "#0284c7", "구거": "#0369a1", "유지": "#06b6d4",
+    "수도용지": "#22d3ee", "공원": "#14b8a6", "체육용지": "#34d399",
+    "유원지": "#fbbf24", "종교용지": "#fb7185", "사적지": "#a16207",
+    "묘지": "#525252", "잡종지": "#d4d4d8", "광천지": "#8b5cf6", "염전": "#0891b2",
+    "학교용지": "#ef4444", "양어장": "#0e7490",
+  };
+  return map[j] || "#6b7280";
+}
+
+function renderMap(args) {
+  const map = _map;
+  const SEL = args.sel_color || "#1e40af";
+  const IS_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const DEFAULT_FILL_OPACITY = IS_TOUCH ? 0.12 : 0.0;
+  const DEFAULT_STROKE_OPACITY = IS_TOUCH ? 0.85 : 0.4;
+  const DEFAULT_STROKE_WEIGHT = IS_TOUCH ? 2.0 : 0.8;
+  const ZOOM_THRESHOLD = args.zoom_label_threshold || 15;
+
+  clearOverlays();
+
+  // 도로 라인
+  (args.road_lines || []).forEach(function(line) {
+    const path = line.map(function(c) { return new naver.maps.LatLng(c[1], c[0]); });
+    const pl = new naver.maps.Polyline({
+      map: map, path: path,
+      strokeColor: '#3b82f6', strokeWeight: 3, strokeOpacity: 0.6,
+    });
+    _drawnRoadLines.push(pl);
+  });
+
+  // 폴리곤
+  const polygons = args.polygons || [];
+  polygons.forEach(function(p) {
+    const paths = p.coords.map(function(ring) {
+      return ring.map(function(c) { return new naver.maps.LatLng(c[1], c[0]); });
+    });
+    const isSel = !!p.is_selected;
+    const polygon = new naver.maps.Polygon({
+      map: map, paths: paths,
+      fillColor: isSel ? SEL : p.color,
+      fillOpacity: isSel ? 0.45 : DEFAULT_FILL_OPACITY,
+      strokeColor: isSel ? SEL : p.color,
+      strokeOpacity: isSel ? 1 : DEFAULT_STROKE_OPACITY,
+      strokeWeight: isSel ? 3 : DEFAULT_STROKE_WEIGHT,
+      clickable: true,
+    });
+    _drawnPolygons.push(polygon);
+    const info = new naver.maps.InfoWindow({
+      content: '<div class="info-card">' + (p.html || '') + '</div>',
+      borderWidth: 0, anchorSize: new naver.maps.Size(0, 0),
+      pixelOffset: new naver.maps.Point(0, -8),
+    });
+    // 클릭 → 부모로 PNU 전송 (양방향 핵심)
+    naver.maps.Event.addListener(polygon, 'click', function(e) {
+      Streamlit.setComponentValue({ type: 'pnu_click', pnu: p.pnu, ts: Date.now() });
+      info.open(map, e.coord);
+    });
+    if (!isSel) {
+      naver.maps.Event.addListener(polygon, 'mouseover', function(e) {
+        polygon.setOptions({
+          fillOpacity: 0.45, strokeColor: p.color,
+          strokeOpacity: 1, strokeWeight: 3,
+        });
+        if (e && e.coord) info.open(map, e.coord);
+      });
+      naver.maps.Event.addListener(polygon, 'mouseout', function() {
+        polygon.setOptions({
+          fillOpacity: DEFAULT_FILL_OPACITY, strokeColor: p.color,
+          strokeOpacity: DEFAULT_STROKE_OPACITY,
+          strokeWeight: DEFAULT_STROKE_WEIGHT,
+        });
+        info.close();
+      });
+    } else {
+      naver.maps.Event.addListener(polygon, 'mouseover', function(e) { info.open(map, e.coord); });
+      naver.maps.Event.addListener(polygon, 'mouseout', function() { info.close(); });
+    }
+  });
+
+  // 마커
+  const markers = args.markers || [];
+  markers.forEach(function(m) {
+    const sel = !!m.is_selected;
+    const size = sel ? 16 : 12;
+    const color = sel ? SEL : m.color;
+    const dotStyle = 'background:' + color + ';width:' + size + 'px;height:' + size + 'px;';
+    const labelText = (m.label || '').replace(/</g, '&lt;');
+    const content =
+      '<div class="marker-wrap">' +
+      '<div class="marker-dot" style="' + dotStyle + '"></div>' +
+      '<div class="marker-label">' + labelText + '</div>' +
+      '</div>';
+    const marker = new naver.maps.Marker({
+      position: new naver.maps.LatLng(m.lat, m.lon),
+      map: map,
+      icon: { content: content, anchor: new naver.maps.Point(size/2, size/2) },
+    });
+    _drawnMarkers.push(marker);
+    const info = new naver.maps.InfoWindow({
+      content: '<div class="info-card">' + (m.html || '') + '</div>',
+      borderWidth: 0, anchorSize: new naver.maps.Size(0, 0),
+      pixelOffset: new naver.maps.Point(0, -8),
+    });
+    naver.maps.Event.addListener(marker, 'click', function() {
+      Streamlit.setComponentValue({ type: 'pnu_click', pnu: m.pnu, ts: Date.now() });
+      info.open(map, marker);
+    });
+  });
+
+  // 라벨 줌 토글
+  function updateLabels() {
+    const show = map.getZoom() >= ZOOM_THRESHOLD;
+    document.querySelectorAll('.marker-label').forEach(function(el) {
+      if (show) el.classList.add('show');
+      else el.classList.remove('show');
+    });
+  }
+  updateLabels();
+
+  // CadastralLayer + 토글 버튼 (한 번만 생성)
+  if (!_cadastralLayer) {
+    _cadastralLayer = new naver.maps.CadastralLayer();
+    _cadastralLayer.setMap(map);
+    const cadBtn = document.createElement('button');
+    const cadHint = document.createElement('div');
+    cadBtn.style.cssText =
+      'position:absolute;top:10px;left:10px;z-index:1000;' +
+      'padding:10px 14px;background:white;border:1px solid #c0c0c0;' +
+      'border-radius:6px;cursor:pointer;font-size:13px;' +
+      'box-shadow:0 1px 3px rgba(0,0,0,0.2);font-weight:500;' +
+      'touch-action:manipulation;';
+    cadHint.style.cssText =
+      'position:absolute;top:60px;left:10px;z-index:1000;' +
+      'padding:6px 10px;background:#fef3c7;color:#92400e;' +
+      'border:1px solid #fbbf24;border-radius:4px;font-size:11px;' +
+      'box-shadow:0 1px 3px rgba(0,0,0,0.15);display:none;';
+    cadHint.innerText = '🔍 핀치줌으로 더 확대 → 줌 14↑';
+    function refreshCad() {
+      const z = map.getZoom();
+      const on = !!_cadastralLayer.getMap();
+      const enough = z >= 14;
+      cadBtn.innerText = '🗺️ 지번 ' + (on ? 'ON' : 'OFF') + ' · zoom ' + z;
+      cadBtn.style.opacity = on ? '1' : '0.6';
+      cadBtn.style.background = (on && !enough) ? '#fff7ed' : 'white';
+      cadHint.style.display = (on && !enough) ? 'block' : 'none';
+    }
+    cadBtn.onclick = function() {
+      if (_cadastralLayer.getMap()) _cadastralLayer.setMap(null);
+      else _cadastralLayer.setMap(map);
+      refreshCad();
+    };
+    document.getElementById('map').appendChild(cadBtn);
+    document.getElementById('map').appendChild(cadHint);
+    naver.maps.Event.addListener(map, 'zoom_changed', function() {
+      updateLabels();
+      refreshCad();
+    });
+    refreshCad();
+  }
+
+  // 선택된 필지 자동 fitBounds (필지 모양대로 줌)
+  const selP = polygons.find(function(p) { return p.is_selected; });
+  if (selP) {
+    const bounds = new naver.maps.LatLngBounds();
+    selP.coords.forEach(function(ring) {
+      ring.forEach(function(c) { bounds.extend(new naver.maps.LatLng(c[1], c[0])); });
+    });
+    map.fitBounds(bounds, { top: 80, right: 60, bottom: 60, left: 60 });
+    setTimeout(function() {
+      const z = map.getZoom();
+      if (z > 20) map.setZoom(20);
+    }, 100);
+  }
+}
+
+function onFirstRender(args) {
+  loadSDK(args.client_id, function() {
+    if (typeof naver === 'undefined' || !naver.maps) {
+      document.getElementById('map').innerHTML =
+        '<div id="of-error"><b>SDK 로드 실패</b></div>';
+      return;
+    }
+    _map = new naver.maps.Map('map', {
+      center: new naver.maps.LatLng(args.center[0], args.center[1]),
+      zoom: args.zoom,
+      mapTypeId: naver.maps.MapTypeId.NORMAL,
+      zoomControl: true,
+      zoomControlOptions: { position: naver.maps.Position.TOP_RIGHT },
+      mapTypeControl: true,
+      scaleControl: true,
+    });
+    renderMap(args);
+  });
+}
+
+// Streamlit RENDER 이벤트
+Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, function(event) {
+  const args = (event.detail && event.detail.args) || {};
+  if (!_map) {
+    onFirstRender(args);
+  } else {
+    // 이미 지도 만들어졌으면 데이터만 갱신
+    if (args.center && args.recenter) {
+      _map.setCenter(new naver.maps.LatLng(args.center[0], args.center[1]));
+      if (args.zoom) _map.setZoom(args.zoom);
+    }
+    renderMap(args);
+  }
+});
+
+Streamlit.setComponentReady();
+Streamlit.setFrameHeight(540);
+</script>
+</body>
+</html>

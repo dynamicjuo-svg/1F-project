@@ -92,6 +92,13 @@ def pnu_bonbeon(pnu: str) -> int:
     return int(pnu[-8:-4])
 
 
+def pnu_is_san(pnu: str) -> bool:
+    """PNU 11번째 자리로 산구분 판별. 1=일반, 2=산.
+    (DB 분포 분석으로 확정: 일반 242,137 vs 산 24,630)
+    """
+    return len(pnu) >= 11 and pnu[10] == "2"
+
+
 # ---------------------------------------------------------------------------
 #  매칭 핵심 로직
 # ---------------------------------------------------------------------------
@@ -112,12 +119,15 @@ def match_trade(trade: Trade, parcels: list, area_tol: float = 0.005,
         # 1) 지목 일치
         if p.jimok != trade.jimok:
             continue
-        # 2) 본번대 일치 (별표가 특정 가능한 경우만)
+        # 2) 산구분 일치 — 거래 is_san과 PNU 11번째 자리 (1=일반, 2=산)
+        if pnu_is_san(p.pnu) != bool(trade.is_san):
+            continue
+        # 3) 본번대 일치 (별표가 특정 가능한 경우만)
         if br is not None:
             bb = pnu_bonbeon(p.pnu)
             if not (br[0] <= bb <= br[1]):
                 continue
-        # 3) 면적 일치 (허용오차 내)
+        # 4) 면적 일치 (허용오차 내)
         diff = abs(p.area_m2 - trade.area_m2) / trade.area_m2
         if diff > area_tol:
             continue
