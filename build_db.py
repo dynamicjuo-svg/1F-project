@@ -31,7 +31,7 @@ REGION_CACHE = os.path.join(HERE, "region_prefix_cache.json")
 
 SIGG_LAWD_CD = "41461"        # 용인 처인구
 PERIOD_START = (2021, 1)
-PERIOD_END = (2025, 12)
+PERIOD_END = (2026, 5)
 
 
 # =====================================================================
@@ -72,6 +72,7 @@ def init_db():
         resolved_jiga REAL,
         unit_per_pyeong REAL,
         candidates_count INTEGER,
+        share_label TEXT,
         UNIQUE(sigg_cd, umd_name, jimok, area_m2, jibun_masked,
                deal_year, deal_month, deal_day, deal_amount)
     );
@@ -81,6 +82,7 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_trades_pnu ON trades(resolved_pnu);
     CREATE INDEX IF NOT EXISTS idx_trades_conf ON trades(match_confidence);
     CREATE INDEX IF NOT EXISTS idx_trades_unit ON trades(unit_per_pyeong);
+    CREATE INDEX IF NOT EXISTS idx_trades_share ON trades(share_label);
 
     CREATE TABLE IF NOT EXISTS collect_log (
         sigg_cd TEXT, deal_ymd TEXT,

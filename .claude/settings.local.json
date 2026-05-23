@@ -10,7 +10,20 @@
       "Bash(python -X utf8 search.py \"백암면 100평이상 5년치의 실거래가를 찾아보고 이중에 지목이 임야인걸 찾아봐\")",
       "PowerShell(Get-NetTCPConnection -LocalPort 8501 -ErrorAction SilentlyContinue | ForEach-Object { try { Stop-Process -Id $_.OwningProcess -Force; \"Killed PID $\\($_.OwningProcess\\)\" } catch { \"Failed to kill $\\($_.OwningProcess\\)\" } })",
       "Bash(python -m streamlit run app.py)",
-      "Bash(python -X utf8 api_keys.py)"
+      "Bash(python -X utf8 api_keys.py)",
+      "WebSearch",
+      "Bash(python -X utf8 -c ' *)",
+      "WebFetch(domain:ko.wikipedia.org)",
+      "Bash(python -X utf8 rematch.py)",
+      "Bash(powershell -Command 'Get-NetTCPConnection -LocalPort 8501 -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { '\\\\''PID '\\\\'' + $_.OwningProcess + '\\\\'' listening on 8501'\\\\'' }')",
+      "Bash(python -X utf8 build_db.py)",
+      "Bash(powershell -Command 'Get-NetTCPConnection -LocalPort 8501 -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { '\\\\''PID '\\\\'' + $_.OwningProcess + '\\\\'' Listening on 8501'\\\\'' }')",
+      "Bash(python -X utf8 _check.py)",
+      "Bash(python -X utf8 search.py \"용인시 원삼면에 지방도318 반경 5km 이내 임야의 1년간 실거래가\")",
+      "Bash(python -X utf8 search.py \"원삼면 임야 1년치 실거래\")",
+      "Bash(python -X utf8 -c \"import ast; ast.parse\\(open\\('app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('app.py syntax OK'\\)\")",
+      "PowerShell(Get-NetTCPConnection -LocalPort 8501 -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { 'PID ' + $_.OwningProcess + ' Listening on 8501' })",
+      "Bash(git add *)"
     ]
   }
 }

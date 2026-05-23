@@ -486,9 +486,18 @@ def search_pipeline(query: str, include_road_jimok: bool):
                 results.append((d, dict(r)))
     else:
         results = [(None, dict(r)) for r in bbox]
+    # 검색 결과 내 PNU 빈도 기반 공유지분 라벨링
+    pnu_count = Counter(r["resolved_pnu"] for _, r in results)
+    def _group_label(n):
+        if n <= 1: return "단독"
+        if n <= 3: return "공유지분"
+        if n <= 7: return "다수공유"
+        return "대규모공유"
+    for _, r in results:
+        r["share_group"] = _group_label(pnu_count[r["resolved_pnu"]])
+
     if cond.get("exclude_shared"):
-        pnu_count = Counter(r["resolved_pnu"] for _, r in results)
-        results = [(d, r) for d, r in results if pnu_count[r["resolved_pnu"]] == 1]
+        results = [(d, r) for d, r in results if r["share_group"] == "단독"]
 
     return {
         "cond": cond,
@@ -594,9 +603,8 @@ if "result" in st.session_state:
 
     # 시세 요약
     st.subheader("💰 시세 요약")
-    high = [(d, r) for d, r in results if r["match_confidence"] == "high"]
-    pnu_count = Counter(r["resolved_pnu"] for _, r in high)
-    solo = [(d, r) for d, r in high if pnu_count[r["resolved_pnu"]] == 1]
+    solo = [(d, r) for d, r in results
+            if r["match_confidence"] == "high" and r.get("share_group") == "단독"]
     units = [r["unit_per_pyeong"] for _, r in solo if r["unit_per_pyeong"]]
     cols = st.columns(4)
     cols[0].metric("전체 거래", f"{len(results):,}건")
@@ -831,6 +839,7 @@ if "result" in st.session_state:
             row["시기"] = r["deal_ymd"][:10] if r["deal_ymd"] else ""
             row["PNU"] = r["resolved_pnu"] or ""
             row["신뢰도"] = r["match_confidence"]
+            row["그룹"] = r.get("share_group", "")
             df_rows.append(row)
         df = pd.DataFrame(df_rows)
 

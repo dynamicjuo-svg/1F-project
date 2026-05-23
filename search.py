@@ -257,8 +257,8 @@ def search(query: str):
         if v is not None and v != [] and v != "":
             print(f"   {k:22s} = {v!r}")
 
-    # [2] 도로 매핑
-    matched_road = None
+    # [2] 도로 매핑 — 결과는 항상 리스트로 정규화 (다중 매핑 지원)
+    matched_roads = []
     road_lines = None
     if cond.get("road_query"):
         rq = cond["road_query"]
@@ -266,7 +266,7 @@ def search(query: str):
             "SELECT 1 FROM roads WHERE road_name = ? LIMIT 1", (rq,)
         ).fetchone()
         if direct:
-            matched_road = rq
+            matched_roads = [rq]
             print(f"\n[2] 도로: '{rq}' DB 직접 일치")
         else:
             cands = [r[0] for r in conn.execute(
@@ -275,8 +275,12 @@ def search(query: str):
                 "AND road_name NOT IN ('', '-') ORDER BY road_name"
             )]
             info = map_road(client, rq, cands)
-            matched_road = info.get("matched")
-            print(f"\n[2] 도로 매핑: '{rq}' → {matched_road!r} ({info.get('confidence')})")
+            m = info.get("matched")
+            if isinstance(m, list):
+                matched_roads = m
+            elif isinstance(m, str) and m:
+                matched_roads = [m]
+            print(f"\n[2] 도로 매핑: '{rq}' → {matched_roads} ({info.get('confidence')})")
             if info.get("reason"):
                 print(f"   이유: {info['reason']}")
 
@@ -326,18 +330,20 @@ def search(query: str):
         where.append("unit_per_pyeong <= ?")
         params.append(cond["max_unit_per_pyeong"])
 
-    # 도로 반경 박스 좁힘
-    if matched_road and cond.get("radius_m"):
+    # 도로 반경 박스 좁힘 (다중 도로: IN 절)
+    if matched_roads and cond.get("radius_m"):
+        ph = ",".join("?" * len(matched_roads))
         b = conn.execute(
             "SELECT MIN(min_lon), MAX(max_lon), MIN(min_lat), MAX(max_lat) "
-            "FROM roads WHERE road_name = ?", (matched_road,)
+            f"FROM roads WHERE road_name IN ({ph})", matched_roads
         ).fetchone()
         if b and b[0] is not None:
             rad_deg = cond["radius_m"] / 111049.0
             where += ["resolved_lon BETWEEN ? AND ?", "resolved_lat BETWEEN ? AND ?"]
             params += [b[0] - rad_deg, b[1] + rad_deg, b[2] - rad_deg, b[3] + rad_deg]
             road_lines = [json.loads(r[0]) for r in conn.execute(
-                "SELECT geometry_json FROM roads WHERE road_name = ?", (matched_road,))]
+                f"SELECT geometry_json FROM roads WHERE road_name IN ({ph})",
+                matched_roads)]
 
     # 정렬
     sort_by = cond.get("sort_by") or "deal_ymd"
@@ -371,11 +377,22 @@ def search(query: str):
     else:
         results = [(None, r) for r in bbox_results]
 
-    # 공유지분 제외
+    # 검색 결과 안에서 같은 PNU 묶음 자동 식별 → 라벨 부여
+    # (DB의 share_label과 별도 — 검색 결과 내부 빈도 기반)
+    pnu_count = Counter(r["resolved_pnu"] for _, r in results)
+    def group_label(pnu, n):
+        if n <= 1: return "단독"
+        if n <= 3: return "공유지분"
+        if n <= 7: return "다수공유"
+        return "대규모공유"
+    # results를 (d, r, group_label) 튜플로 확장
+    results = [(d, r, group_label(r["resolved_pnu"], pnu_count[r["resolved_pnu"]]))
+               for d, r in results]
+
+    # 공유지분 제외 (요청 시)
     if cond.get("exclude_shared"):
-        pnu_count = Counter(r["resolved_pnu"] for _, r in results)
         before = len(results)
-        results = [(d, r) for d, r in results if pnu_count[r["resolved_pnu"]] == 1]
+        results = [(d, r, g) for d, r, g in results if g == "단독"]
         print(f"   공유지분 제외 후: {len(results)}건  (제외 {before - len(results)})")
 
     # 결과 출력
@@ -387,32 +404,34 @@ def search(query: str):
         conn.close()
         return
 
-    # 시세 요약
-    high = [(d, r) for d, r in results if r["match_confidence"] == "high"]
-    pnu_count = Counter(r["resolved_pnu"] for _, r in high)
-    solo = [(d, r) for d, r in high if pnu_count[r["resolved_pnu"]] == 1]
-    units = [r["unit_per_pyeong"] for _, r in solo if r["unit_per_pyeong"]]
+    # 시세 요약 — high·단독 기준 (시세 왜곡 방지)
+    solo = [(d, r, g) for d, r, g in results
+            if r["match_confidence"] == "high" and g == "단독"]
+    units = [r["unit_per_pyeong"] for _, r, _ in solo if r["unit_per_pyeong"]]
     if units:
         print(f"\n시세 (high·단독매매 {len(solo)}건 기준):")
         print(f"   평단가 중앙값 {statistics.median(units):>8,.0f} 만원/평")
         print(f"   평단가 평균   {sum(units)/len(units):>8,.0f} 만원/평")
         print(f"   평단가 범위   {min(units):,.0f} ~ {max(units):,.0f}")
-        prices = [r["deal_amount"] for _, r in solo]
+        prices = [r["deal_amount"] for _, r, _ in solo]
         print(f"   금액 중앙값   {statistics.median(prices):>8,.0f} 만원")
+        # 그룹별 거래 비중
+        group_count = Counter(g for _, _, g in results)
+        print(f"   그룹: " + "  ".join(f"{k} {v}" for k, v in group_count.most_common()))
 
     # 미리보기
     print(f"\n[거래 미리보기 — 최대 15건, {sort_by} {sort_order} 정렬]")
     head = "거리   " if road_lines else ""
     print(f"   {head}{'동·리':16s}{'지번':14s}{'지목':4s} "
-          f"{'면적':>8s}  {'금액':>10s}  {'평단가':>9s}  시기        신뢰도")
-    print("   " + "-" * 102)
-    for d, r in results[:15]:
+          f"{'면적':>8s}  {'금액':>10s}  {'평단가':>9s}  시기        신뢰도  그룹")
+    print("   " + "-" * 110)
+    for d, r, g in results[:15]:
         dstr = f"{d:>4.0f}m " if d is not None else ""
         unit = r["unit_per_pyeong"] or 0
         print(f"   {dstr}{r['umd_name'][:16]:16s}{(r['resolved_jibun'] or '?')[:14]:14s}"
               f"{r['jimok']:4s} {r['area_m2']:>7,.0f}㎡  "
               f"{r['deal_amount']:>9,}만원  {unit:>6,.0f}만원/평  "
-              f"{r['deal_ymd'][:10]}  {r['match_confidence']}")
+              f"{r['deal_ymd'][:10]}  {r['match_confidence']:5s} {g}")
 
     conn.close()
 
