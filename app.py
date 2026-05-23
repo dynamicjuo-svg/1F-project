@@ -443,6 +443,47 @@ def search_pipeline(query: str, include_road_jimok: bool):
         if cond.get(fld) is not None:
             where.append(f"{col} {op} ?")
             params.append(cond[fld])
+
+    # 입지/규제 조건 (parcels 컬럼) — 서브쿼리로 합침
+    parcels_conds = []
+    parcels_params = []
+    for fld, col, op in [
+        ("min_elevation_m", "elevation_m", ">="),
+        ("max_elevation_m", "elevation_m", "<="),
+        ("max_slope_deg",   "slope_deg",   "<="),
+        ("max_stream_dist_m", "dist_to_stream_m", "<="),
+        ("min_stream_dist_m", "dist_to_stream_m", ">="),
+    ]:
+        if cond.get(fld) is not None:
+            parcels_conds.append(f"{col} {op} ?")
+            parcels_params.append(cond[fld])
+    if cond.get("zone_include"):
+        zs = cond["zone_include"]
+        parcels_conds.append(f"zone_type IN ({','.join('?' * len(zs))})")
+        parcels_params += zs
+    if cond.get("zone_exclude"):
+        zs = cond["zone_exclude"]
+        parcels_conds.append(f"zone_type NOT IN ({','.join('?' * len(zs))})")
+        parcels_params += zs
+    if cond.get("exclude_gb"):
+        parcels_conds.append("(is_gb IS NULL OR is_gb = 0)")
+    if cond.get("exclude_protected_forest"):
+        parcels_conds.append("(is_protected_forest IS NULL OR is_protected_forest = 0)")
+    if cond.get("exclude_farm_promote"):
+        parcels_conds.append("(is_farm_promote IS NULL OR is_farm_promote = 0)")
+    if cond.get("require_road_access"):
+        parcels_conds.append("has_road_access = 1")
+    if cond.get("exclude_road_access"):
+        parcels_conds.append("(has_road_access IS NULL OR has_road_access = 0)")
+    if cond.get("exclude_flood"):
+        parcels_conds.append("(flood_risk IS NULL OR flood_risk = 0)")
+    if parcels_conds:
+        where.append(
+            "resolved_pnu IN (SELECT pnu FROM parcels WHERE "
+            + " AND ".join(parcels_conds) + ")"
+        )
+        params += parcels_params
+
     if matched_roads and cond.get("radius_m"):
         placeholders = ",".join("?" * len(matched_roads))
         b = conn.execute(

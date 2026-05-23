@@ -49,11 +49,26 @@ def init_db():
         lon REAL, lat REAL,
         jiga REAL,
         prefix8 TEXT,
-        addr TEXT
+        addr TEXT,
+        elevation_m REAL,
+        slope_deg REAL,
+        aspect_deg REAL,
+        zone_type TEXT,
+        zone_detail TEXT,
+        is_gb INTEGER,
+        is_protected_forest INTEGER,
+        is_farm_promote INTEGER,
+        dist_to_stream_m REAL,
+        has_road_access INTEGER,
+        flood_risk INTEGER
     );
     CREATE INDEX IF NOT EXISTS idx_parcels_prefix ON parcels(prefix8);
     CREATE INDEX IF NOT EXISTS idx_parcels_jimok ON parcels(jimok);
     CREATE INDEX IF NOT EXISTS idx_parcels_area ON parcels(area_m2);
+    CREATE INDEX IF NOT EXISTS idx_parcels_zone ON parcels(zone_type);
+    CREATE INDEX IF NOT EXISTS idx_parcels_elev ON parcels(elevation_m);
+    CREATE INDEX IF NOT EXISTS idx_parcels_slope ON parcels(slope_deg);
+    CREATE INDEX IF NOT EXISTS idx_parcels_road ON parcels(has_road_access);
 
     CREATE TABLE IF NOT EXISTS trades (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -58,6 +58,21 @@ PARSER_SYSTEM = """당신은 한국 토지 실거래가 검색 시스템의 자�
   "min_unit_per_pyeong": "최소 평단가(만원/평)",
   "max_unit_per_pyeong": "최대 평단가(만원/평)",
   "exclude_shared": "true=공유지분 제외(단독매매만), false/null=모두",
+
+  "min_elevation_m": "해발 최소 (m). '해발 100 이상'→100, '고지대'→200",
+  "max_elevation_m": "해발 최대 (m). '저지대'→50",
+  "max_slope_deg": "경사 최대 (도). '평지'→5, '완만한'→15, '급경사 빼고'→25",
+  "zone_include": "용도지역 포함 배열. 가능: 도시지역,관리지역,농림지역,자연환경보전지역,계획관리지역,생산관리지역,보전관리지역,주거지역,상업지역,공업지역,녹지지역",
+  "zone_exclude": "용도지역 제외 배열",
+  "exclude_gb": "true=개발제한구역(그린벨트) 제외",
+  "exclude_protected_forest": "true=보전산지 제외",
+  "exclude_farm_promote": "true=농업진흥구역 제외",
+  "max_stream_dist_m": "하천 최대 거리(m). '하천옆'→200, '하천 100m 이내'→100, '하천에서 가까운'→300",
+  "min_stream_dist_m": "하천 최소 거리(m). '하천에서 떨어진'→500",
+  "require_road_access": "true=도로 접면 필수. '맹지 아닌'·'도로 접한'·'도로변'→true",
+  "exclude_road_access": "true=맹지만. '맹지만'→true (드문 표현)",
+  "exclude_flood": "true=침수예상지역 제외. '침수 빼고'·'안전한'→true",
+
   "sort_by": "정렬 기준: 'deal_ymd'|'unit_per_pyeong'|'area_m2'|'deal_amount'",
   "sort_order": "'asc'(낮은순/오래된순) 또는 'desc'(높은순/최근). 기본 'desc'"
 }
@@ -83,6 +98,28 @@ PARSER_SYSTEM = """당신은 한국 토지 실거래가 검색 시스템의 자�
 - "5키로"·"5킬로"·"5km" → radius_m=5000
 - "원삼면 백암면", "원삼면과 백암면", "두 면" 같이 여러 읍·면·동이 명시되면
   emd_list에 모두 넣을 것: ["원삼면", "백암면"]
+
+**입지/규제 표현 예시 (토지 구매 체크리스트)**:
+- "해발 100m 이상" → min_elevation_m=100
+- "해발 50m 미만" → max_elevation_m=50
+- "평지에 가까운"·"평평한" → max_slope_deg=5
+- "경사 완만한"·"완경사" → max_slope_deg=15
+- "급경사 빼고" → max_slope_deg=25
+- "관리지역만"·"관리지역에서" → zone_include=["관리지역"]
+- "계획관리지역" → zone_include=["계획관리지역"]
+- "농림 빼고"·"농림지역 제외" → zone_exclude=["농림지역"]
+- "도시지역 제외"·"비도시" → zone_exclude=["도시지역"]
+- "그린벨트 빼고"·"개발제한구역 빼고"·"GB 빼고" → exclude_gb=true
+- "보전산지 빼고"·"보산 빼고" → exclude_protected_forest=true
+- "농업진흥구역 빼고"·"농진 빼고" → exclude_farm_promote=true
+- "하천옆"·"강 옆"·"하천 가까운" → max_stream_dist_m=200
+- "하천 100m 이내" → max_stream_dist_m=100
+- "하천에서 떨어진"·"하천 멀리" → min_stream_dist_m=500
+- "맹지 아닌"·"도로 접한"·"도로변"·"진입로 있는" → require_road_access=true
+- "맹지만" → exclude_road_access=true
+- "침수 빼고"·"침수예상 제외"·"안전한 곳" → exclude_flood=true
+- 복합: "관리지역 해발 100m 이상 맹지 아닌" →
+  zone_include=["관리지역"], min_elevation_m=100, require_road_access=true
 
 **복합 명령 처리** (한 문장에 여러 조건이 순차적으로 등장하는 경우):
 - "찾아보고", "찾아봐", "보여줘", "알려줘" 등 검색 동사는 무시
@@ -296,9 +333,13 @@ def search(query: str):
         params.extend([start_ymd, end_ymd])
         print(f"\n[3] 기간: {start_ymd} ~ {end_ymd}")
 
-    if cond.get("emd"):
-        where.append("umd_name LIKE ?")
-        params.append(cond["emd"] + "%")
+    # emd_list(다중) 우선, 없으면 emd(단수, 옛 호환)
+    emds = cond.get("emd_list")
+    if not emds and cond.get("emd"):
+        emds = [cond["emd"]]
+    if emds:
+        where.append("(" + " OR ".join("umd_name LIKE ?" for _ in emds) + ")")
+        params += [e + "%" for e in emds]
 
     if cond.get("jimok_list"):
         jms = cond["jimok_list"]
@@ -329,6 +370,51 @@ def search(query: str):
     if cond.get("max_unit_per_pyeong") is not None:
         where.append("unit_per_pyeong <= ?")
         params.append(cond["max_unit_per_pyeong"])
+
+    # 입지/규제 조건 (parcels 컬럼) — 서브쿼리로 합침
+    parcels_conds = []
+    parcels_params = []
+    if cond.get("min_elevation_m") is not None:
+        parcels_conds.append("elevation_m >= ?")
+        parcels_params.append(cond["min_elevation_m"])
+    if cond.get("max_elevation_m") is not None:
+        parcels_conds.append("elevation_m <= ?")
+        parcels_params.append(cond["max_elevation_m"])
+    if cond.get("max_slope_deg") is not None:
+        parcels_conds.append("slope_deg <= ?")
+        parcels_params.append(cond["max_slope_deg"])
+    if cond.get("zone_include"):
+        zs = cond["zone_include"]
+        parcels_conds.append(f"zone_type IN ({','.join('?' * len(zs))})")
+        parcels_params += zs
+    if cond.get("zone_exclude"):
+        zs = cond["zone_exclude"]
+        parcels_conds.append(f"zone_type NOT IN ({','.join('?' * len(zs))})")
+        parcels_params += zs
+    if cond.get("exclude_gb"):
+        parcels_conds.append("(is_gb IS NULL OR is_gb = 0)")
+    if cond.get("exclude_protected_forest"):
+        parcels_conds.append("(is_protected_forest IS NULL OR is_protected_forest = 0)")
+    if cond.get("exclude_farm_promote"):
+        parcels_conds.append("(is_farm_promote IS NULL OR is_farm_promote = 0)")
+    if cond.get("max_stream_dist_m") is not None:
+        parcels_conds.append("dist_to_stream_m <= ?")
+        parcels_params.append(cond["max_stream_dist_m"])
+    if cond.get("min_stream_dist_m") is not None:
+        parcels_conds.append("dist_to_stream_m >= ?")
+        parcels_params.append(cond["min_stream_dist_m"])
+    if cond.get("require_road_access"):
+        parcels_conds.append("has_road_access = 1")
+    if cond.get("exclude_road_access"):
+        parcels_conds.append("(has_road_access IS NULL OR has_road_access = 0)")
+    if cond.get("exclude_flood"):
+        parcels_conds.append("(flood_risk IS NULL OR flood_risk = 0)")
+    if parcels_conds:
+        where.append(
+            "resolved_pnu IN (SELECT pnu FROM parcels WHERE "
+            + " AND ".join(parcels_conds) + ")"
+        )
+        params += parcels_params
 
     # 도로 반경 박스 좁힘 (다중 도로: IN 절)
     if matched_roads and cond.get("radius_m"):

@@ -20,6 +20,10 @@ cache_*.json
 wonsam_cache.json
 # region_prefix_cache.json은 작은 정적 매핑이라 GitHub에 올림
 
+# DEM 타일 (build_dem.py가 AWS public S3에서 자동 다운로드)
+*.hgt
+*.hgt.gz
+
 # Streamlit 정적/시크릿
 static/naver_map.html
 static/*.html
