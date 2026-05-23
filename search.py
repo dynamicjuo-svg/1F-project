@@ -73,6 +73,12 @@ PARSER_SYSTEM = """당신은 한국 토지 실거래가 검색 시스템의 자�
   "exclude_road_access": "true=맹지만. '맹지만'→true (드문 표현)",
   "exclude_flood": "true=침수예상지역 제외. '침수 빼고'·'안전한'→true",
 
+  "reference_jibun": "특정 필지를 기준으로 '비슷한 조건' 검색할 때 그 필지 지번 (정규화 문자열). 예: '백암면 근삼리 산 75-1', '원삼면 두창리 957-5'. 표현: 'X와 비슷한 조건', 'X 같은 조건', 'X와 유사한 매물', 'X처럼 생긴 땅'. 시스템이 그 필지의 jimok/면적/해발/경사/맹지여부를 자동 추출해 cond에 채움. 사용자가 명시한 cond는 덮어쓰지 않음.",
+  "similarity_level": "'X와 비슷한' 검색의 폭 강도. 'strict'(면적±15% 해발±30m 경사+3°) | 'normal'(±30% ±50m +5°, 기본) | 'loose'(±50% ±80m +10°). 표현: '매우 비슷한'·'정확히 같은'→strict, '비슷한'·'유사한'→normal, '폭넓게 비슷한'·'대충 비슷한'·'널널하게'→loose.",
+  "area_tol_pct": "참조 필지 면적 허용 폭 %. '면적 ±20%'·'면적 20프로 안'→20. similarity_level보다 우선.",
+  "elevation_tol_m": "참조 필지 해발 허용 폭 m. '해발 ±30m'·'해발 비슷한 30m 안'→30. similarity_level보다 우선.",
+  "slope_tol_deg": "참조 필지 경사 허용 추가 폭 도. '경사 ±3도'·'경사 거의 같은'→3. similarity_level보다 우선.",
+
   "sort_by": "정렬 기준: 'deal_ymd'|'unit_per_pyeong'|'area_m2'|'deal_amount'",
   "sort_order": "'asc'(낮은순/오래된순) 또는 'desc'(높은순/최근). 기본 'desc'"
 }
@@ -120,6 +126,27 @@ PARSER_SYSTEM = """당신은 한국 토지 실거래가 검색 시스템의 자�
 - "침수 빼고"·"침수예상 제외"·"안전한 곳" → exclude_flood=true
 - 복합: "관리지역 해발 100m 이상 맹지 아닌" →
   zone_include=["관리지역"], min_elevation_m=100, require_road_access=true
+
+**참조 필지(reference_jibun) 표현 — 'X와 비슷한 조건' 검색**:
+- "근삼리 산75-1과 비슷한 조건의 실거래가" → reference_jibun="근삼리 산 75-1"
+- "백암면 근삼리 산75-1 같은 조건" → reference_jibun="백암면 근삼리 산 75-1"
+- "원삼면 두창리 957-5와 유사한 매물" → reference_jibun="원삼면 두창리 957-5"
+- "산75-1처럼 생긴 임야" → reference_jibun="산 75-1", jimok_list=["임야"] (보강용)
+- 정규화 규칙:
+  · '산' 다음에 공백 한 칸 ('산75-1' → '산 75-1')
+  · 본번-부번 사이 하이픈 그대로 ('75-1')
+  · emd·ri가 입력에 있으면 포함, 없으면 지번만 ('산 75-1')
+- 사용자가 reference_jibun 외에 다른 cond도 명시하면 그것은 그대로 두고
+  reference에서 자동 채우는 부분은 시스템이 알아서 (사용자 cond 우선)
+
+**비슷한 조건의 '폭' 조절 (similarity_level + 항목별 tol)**:
+- "근삼리 산75-1과 매우 비슷한" → similarity_level="strict"
+- "두창리 957-5와 정확히 같은 조건" → similarity_level="strict"
+- "산75-1과 폭넓게 비슷한"·"대충 비슷한"·"널널하게" → similarity_level="loose"
+- "X와 비슷한데 면적 ±20%" → reference_jibun=X, area_tol_pct=20
+- "X 같은데 해발 ±30m 안" → reference_jibun=X, elevation_tol_m=30
+- "X 같은 조건 경사 거의 같은" → reference_jibun=X, slope_tol_deg=3
+- 우선순위: 사용자가 직접 min_area_m2 등 명시 > 항목별 *_tol > similarity_level > 기본
 
 **복합 명령 처리** (한 문장에 여러 조건이 순차적으로 등장하는 경우):
 - "찾아보고", "찾아봐", "보여줘", "알려줘" 등 검색 동사는 무시
@@ -226,6 +253,209 @@ def map_road(client, road_query, candidates):
 
 
 # =====================================================================
+#  reference_jibun — 참조 필지 lookup + cond 자동 채움
+# =====================================================================
+def _load_emd_to_prefix8():
+    cache_path = os.path.join(HERE, "region_prefix_cache.json")
+    if not os.path.exists(cache_path):
+        return {}
+    with open(cache_path, encoding="utf-8") as f:
+        d = json.load(f)
+    return {emd: info["prefix8"] for emd, info in d.get("emd_map", {}).items()}
+
+
+_EMD_P8 = None
+
+
+def _parse_reference_str(ref_str):
+    """'백암면 근삼리 산 75-1' → (emd, ri, jibun_norm).
+    emd/ri는 입력에 없으면 None.
+    jibun_norm은 '산 75-1' 또는 '957-5' 형태로 공백 정규화."""
+    if not ref_str:
+        return None, None, None
+    s = ref_str.strip()
+    parts = s.split()
+    emd = None
+    ri = None
+    rest_start = 0
+    for i, tok in enumerate(parts):
+        if tok.endswith(("읍", "면", "동")):
+            emd = tok
+            rest_start = i + 1
+        elif tok.endswith("리"):
+            ri = tok
+            rest_start = i + 1
+    rest = " ".join(parts[rest_start:]).strip()
+    # 산 정규화: '산75-1' → '산 75-1'
+    if rest.startswith("산") and len(rest) > 1 and rest[1] != " ":
+        rest = "산 " + rest[1:]
+    # 공백 정리
+    rest = " ".join(rest.split())
+    return emd, ri, rest
+
+
+def _candidate_jibun_patterns(jibun_norm):
+    """parcels.jibun은 '산 75-1임' / '942-7답' 처럼 끝에 jimok 한 글자가 붙음.
+    매칭 패턴 두 가지 시도 — 공백 포함/제거."""
+    base = jibun_norm.strip()
+    nospace = base.replace(" ", "")
+    return [base + "%", nospace + "%"]
+
+
+def _prefix8_from_ri_via_trades(conn, ri):
+    """trades.umd_name LIKE '%{ri}%' 매칭 거래의 resolved_pnu prefix8 최빈값.
+    백암면 parcels.addr 누락 이슈를 trades 데이터로 우회.
+    """
+    row = conn.execute(
+        "SELECT SUBSTR(resolved_pnu, 1, 8) p8, COUNT(*) cnt "
+        "FROM trades WHERE umd_name LIKE ? AND resolved_pnu IS NOT NULL "
+        "GROUP BY p8 ORDER BY 2 DESC LIMIT 1",
+        ('%' + ri + '%',)
+    ).fetchone()
+    return row[0] if row else None
+
+
+def lookup_reference_parcel(conn, ref_str):
+    """reference_jibun 문자열 → 최적 단일 필지 row (dict).
+    못 찾으면 None."""
+    global _EMD_P8
+    if _EMD_P8 is None:
+        _EMD_P8 = _load_emd_to_prefix8()
+    emd, ri, jibun_norm = _parse_reference_str(ref_str)
+    if not jibun_norm:
+        return None
+
+    # emd 우선, 없으면 ri를 trades 거래로 역추적
+    target_p8 = None
+    if emd:
+        target_p8 = _EMD_P8.get(emd)
+    if not target_p8 and ri:
+        target_p8 = _prefix8_from_ri_via_trades(conn, ri)
+
+    where = []
+    params = []
+    if target_p8:
+        where.append("prefix8 = ?")
+        params.append(target_p8)
+    # jibun LIKE 패턴 OR
+    patterns = _candidate_jibun_patterns(jibun_norm)
+    where.append("(" + " OR ".join("jibun LIKE ?" for _ in patterns) + ")")
+    params += patterns
+    sql = (
+        "SELECT pnu, jibun, jimok, area_m2, jiga, "
+        "elevation_m, slope_deg, has_road_access, zone_type, prefix8 "
+        "FROM parcels WHERE " + " AND ".join(where)
+        + " ORDER BY area_m2 DESC LIMIT 30"
+    )
+    conn.row_factory = sqlite3.Row
+    rows = list(conn.execute(sql, params))
+    if not rows:
+        # 마지막 fallback: emd/ri 무시하고 jibun만으로 한 번 더
+        if target_p8 or where[0].startswith("prefix8"):
+            sql2 = (
+                "SELECT pnu, jibun, jimok, area_m2, jiga, "
+                "elevation_m, slope_deg, has_road_access, zone_type, prefix8 "
+                "FROM parcels WHERE (" + " OR ".join("jibun LIKE ?" for _ in patterns)
+                + ") ORDER BY area_m2 DESC LIMIT 30"
+            )
+            rows = list(conn.execute(sql2, patterns))
+            if not rows:
+                return None
+        else:
+            return None
+    # 같은 jibun에 도로/임야 둘 다 있을 수 있음 → 면적 최대 선택
+    # (도로 지목은 보통 좁아 자연스럽게 의도된 본번 임야가 우선됨)
+    return dict(rows[0])
+
+
+# 유사도 레벨 → 기본 허용 폭
+SIMILARITY_PRESETS = {
+    "strict": {"area_pct": 15, "elev_m": 30, "slope_deg": 3},
+    "normal": {"area_pct": 30, "elev_m": 50, "slope_deg": 5},
+    "loose":  {"area_pct": 50, "elev_m": 80, "slope_deg": 10},
+}
+
+
+def _resolve_tolerances(cond):
+    """우선순위: 항목별 *_tol > similarity_level > 기본(normal). 사용자 명시 min/max_*는
+    뒤에서 setdefault로 자동 보존."""
+    level = (cond.get("similarity_level") or "normal").lower()
+    base = SIMILARITY_PRESETS.get(level, SIMILARITY_PRESETS["normal"])
+    return {
+        "area_pct": cond.get("area_tol_pct") if cond.get("area_tol_pct") is not None
+                    else base["area_pct"],
+        "elev_m": cond.get("elevation_tol_m") if cond.get("elevation_tol_m") is not None
+                  else base["elev_m"],
+        "slope_deg": cond.get("slope_tol_deg") if cond.get("slope_tol_deg") is not None
+                     else base["slope_deg"],
+        "level": level,
+    }
+
+
+def fill_cond_from_reference(cond, ref_parcel):
+    """참조 필지 특성을 cond에 채움. 사용자가 명시한 cond는 안 덮어씀.
+    유사도 폭은 similarity_level(기본 normal) + 항목별 *_tol로 결정."""
+    notes = []  # 채워진 내역 로그용
+
+    def setdefault(key, value, label):
+        if cond.get(key) is None and value is not None:
+            cond[key] = value
+            notes.append(f"{label}={value}")
+
+    tol = _resolve_tolerances(cond)
+    level_label = tol["level"]
+    if level_label != "normal" or cond.get("area_tol_pct") is not None \
+            or cond.get("elevation_tol_m") is not None \
+            or cond.get("slope_tol_deg") is not None:
+        notes.append(
+            f"tol(level={level_label}, ±{tol['area_pct']}%면적, "
+            f"±{tol['elev_m']}m해발, +{tol['slope_deg']}°경사)"
+        )
+
+    # jimok
+    if not cond.get("jimok_list") and ref_parcel.get("jimok"):
+        cond["jimok_list"] = [ref_parcel["jimok"]]
+        notes.append(f"jimok={ref_parcel['jimok']}")
+    # emd (prefix8 역추적)
+    if not cond.get("emd_list") and not cond.get("emd"):
+        global _EMD_P8
+        if _EMD_P8 is None:
+            _EMD_P8 = _load_emd_to_prefix8()
+        p8 = ref_parcel.get("prefix8")
+        emd_name = next((e for e, p in _EMD_P8.items() if p == p8), None)
+        if emd_name:
+            cond["emd_list"] = [emd_name]
+            notes.append(f"emd={emd_name}")
+    # 면적 (tol에 따라 폭 결정)
+    area = ref_parcel.get("area_m2")
+    if area and area > 0:
+        pct = tol["area_pct"] / 100.0
+        setdefault("min_area_m2", round(area * (1 - pct)), "min_area_m2")
+        setdefault("max_area_m2", round(area * (1 + pct)), "max_area_m2")
+    # 해발 (tol에 따라 폭 결정)
+    elev = ref_parcel.get("elevation_m")
+    if elev is not None:
+        setdefault("min_elevation_m", round(elev - tol["elev_m"]), "min_elevation_m")
+        setdefault("max_elevation_m", round(elev + tol["elev_m"]), "max_elevation_m")
+    # 경사 (참조 + tol)
+    slope = ref_parcel.get("slope_deg")
+    if slope is not None:
+        setdefault("max_slope_deg", round(slope + tol["slope_deg"], 1), "max_slope_deg")
+    # 도로 접면 같음
+    has_road = ref_parcel.get("has_road_access")
+    if has_road == 1 and not cond.get("require_road_access") \
+            and not cond.get("exclude_road_access"):
+        cond["require_road_access"] = True
+        notes.append("require_road_access=True")
+    # 용도지역 (있으면)
+    zone = ref_parcel.get("zone_type")
+    if zone and not cond.get("zone_include") and not cond.get("zone_exclude"):
+        cond["zone_include"] = [zone]
+        notes.append(f"zone_include=['{zone}']")
+    return notes
+
+
+# =====================================================================
 #  거리 함수
 # =====================================================================
 def _seg_dist2(px, py, ax, ay, bx, by):
@@ -293,6 +523,26 @@ def search(query: str):
     for k, v in cond.items():
         if v is not None and v != [] and v != "":
             print(f"   {k:22s} = {v!r}")
+
+    # [1.5] 참조 필지 (reference_jibun) — 비슷한 조건 자동 cond 채움
+    if cond.get("reference_jibun"):
+        ref_str = cond["reference_jibun"]
+        ref = lookup_reference_parcel(conn, ref_str)
+        if ref:
+            py = ref["area_m2"] / 3.3058 if ref.get("area_m2") else 0
+            print(f"\n[1.5] 참조 필지 lookup: '{ref_str}'")
+            print(f"   PNU={ref['pnu']}  {ref['jibun']}  {ref['jimok']}  "
+                  f"{ref['area_m2']:,.0f}㎡({py:,.0f}평)  "
+                  f"공시 {ref['jiga']:,.0f}원/㎡  "
+                  f"해발 {ref.get('elevation_m')}m  경사 "
+                  f"{ref.get('slope_deg'):.1f}°  접면 {ref.get('has_road_access')}"
+                  if ref.get("slope_deg") is not None
+                  else f"   PNU={ref['pnu']}  {ref['jibun']}  {ref['jimok']}")
+            notes = fill_cond_from_reference(cond, ref)
+            if notes:
+                print(f"   → 자동 채운 cond: {', '.join(notes)}")
+        else:
+            print(f"\n[1.5] 참조 필지 '{ref_str}' 찾지 못함 — reference 무시")
 
     # [2] 도로 매핑 — 결과는 항상 리스트로 정규화 (다중 매핑 지원)
     matched_roads = []

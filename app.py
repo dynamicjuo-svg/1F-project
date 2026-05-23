@@ -29,7 +29,8 @@ from jinja2 import Template
 from streamlit_folium import st_folium
 
 from api_keys import ANTHROPIC_KEY, VWORLD_KEY, NAVER_MAP_CLIENT_ID
-from search import parse_query, map_road, point_to_line_m, build_period_range
+from search import (parse_query, map_road, point_to_line_m, build_period_range,
+                    lookup_reference_parcel, fill_cond_from_reference)
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -371,6 +372,14 @@ def search_pipeline(query: str, include_road_jimok: bool):
     client = get_client()
     cond = parse_query(client, query)
 
+    # 참조 필지 (reference_jibun) — 비슷한 조건 자동 cond 채움
+    reference_info = None
+    if cond.get("reference_jibun"):
+        ref = lookup_reference_parcel(conn, cond["reference_jibun"])
+        if ref:
+            notes = fill_cond_from_reference(cond, ref)
+            reference_info = {"ref": ref, "notes": notes}
+
     # emd_list 정규화 (단일 'emd' 키도 호환)
     emds = cond.get("emd_list") or (
         [cond["emd"]] if cond.get("emd") else []
@@ -551,6 +560,7 @@ def search_pipeline(query: str, include_road_jimok: bool):
         "out_of_range": out_of_range,
         "sort_by": sort_by,
         "sort_order": sort_order,
+        "reference_info": reference_info,
     }
 
 
@@ -637,6 +647,27 @@ if "result" in st.session_state:
                 st.caption(ri["reason"])
         if result["start_ymd"]:
             st.write(f"**기간**: {result['start_ymd']} ~ {result['end_ymd']}")
+
+    # 참조 필지 정보 (reference_jibun)
+    if result.get("reference_info"):
+        ri = result["reference_info"]
+        ref = ri["ref"]
+        py = ref["area_m2"] / PYEONG_PER_M2 if ref.get("area_m2") else 0
+        with st.expander(f"📍 참조 필지: {ref['jibun']} ({ref['jimok']}, {py:,.0f}평)",
+                          expanded=True):
+            cols = st.columns(4)
+            cols[0].metric("면적", f"{int(ref['area_m2']):,}㎡",
+                           help=f"{py:,.0f}평")
+            cols[1].metric("공시지가",
+                           f"{int(ref['jiga']):,}원/㎡" if ref.get('jiga') else "—")
+            cols[2].metric("해발",
+                           f"{ref['elevation_m']:.0f}m" if ref.get('elevation_m') is not None else "—",
+                           help=f"경사 {ref['slope_deg']:.1f}°" if ref.get('slope_deg') is not None else "")
+            cols[3].metric("도로 접면",
+                           "접면" if ref.get('has_road_access') == 1 else
+                           ("맹지" if ref.get('has_road_access') == 0 else "—"))
+            if ri.get("notes"):
+                st.caption("**자동 채워진 조건**: " + " · ".join(ri["notes"]))
 
     if not results:
         st.warning("조건에 맞는 거래가 없어요. 다른 표현으로 시도해보세요.")

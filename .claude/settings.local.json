@@ -35,7 +35,15 @@
       "Bash(python -X utf8 build_dem.py)",
       "Bash(python -X utf8 search.py \"원삼면 임야 해발 200m 이상 평지에 가까운 1년치\")",
       "Bash(python -X utf8 search.py \"원삼면 임야 해발 100m 이상 맹지 아닌 1년치\")",
-      "Bash(python -X utf8 search.py \"근삼리 산75-1 과 비슷한 조건의 실거래가\")"
+      "Bash(python -X utf8 search.py \"근삼리 산75-1 과 비슷한 조건의 실거래가\")",
+      "Bash(python -X utf8 search.py \"근삼리 산75-1과 비슷한 조건의 실거래가\")",
+      "Bash(python -X utf8 -c \"import ast; ast.parse\\(open\\('app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('app.py OK'\\)\")",
+      "Bash(python -X utf8 search.py \"원삼면 두창리 957-5와 비슷한 매물\")",
+      "Bash(python -X utf8 search.py \"근삼리 산75-1과 비슷한데 면적 좀 더 작은 5000평 이상\")",
+      "Bash(python -X utf8 search.py \"두창리 957-5같은데 면적 30평 이상\")",
+      "Bash(python -X utf8 search.py \"근삼리 산75-1과 매우 비슷한\")",
+      "Bash(python -X utf8 search.py \"근삼리 산75-1과 폭넓게 비슷한\")",
+      "Bash(python -X utf8 search.py \"근삼리 산75-1과 비슷한데 면적 ±20%\")"
     ]
   }
 }
