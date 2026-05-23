@@ -216,30 +216,48 @@ if (typeof naver === 'undefined' || !naver.maps) {{
     scaleControl: true,
   }});
 
-  // 지적편집도 레이어 (줌 14+에서 자동 표시)
+  // 지적편집도 레이어 (네이버 정책: 줌 14 이상에서만 격자 렌더링)
   const cadastralLayer = new naver.maps.CadastralLayer();
   cadastralLayer.setMap(map);
+  const CADASTRAL_MIN_ZOOM = 14;
 
-  // 사용자가 끌 수 있는 토글 버튼 (지도 좌상단)
+  // 토글 + 현재 줌 라이브 표시 (모바일 디버깅 + 안내)
   const cadBtn = document.createElement('button');
-  cadBtn.innerText = '🗺️ 지적편집도 ON';
   cadBtn.style.cssText =
     'position:absolute;top:10px;left:10px;z-index:1000;' +
-    'padding:6px 10px;background:white;border:1px solid #c0c0c0;' +
-    'border-radius:4px;cursor:pointer;font-size:12px;' +
-    'box-shadow:0 1px 3px rgba(0,0,0,0.2);font-weight:500;';
+    'padding:10px 14px;background:white;border:1px solid #c0c0c0;' +
+    'border-radius:6px;cursor:pointer;font-size:13px;' +
+    'box-shadow:0 1px 3px rgba(0,0,0,0.2);font-weight:500;' +
+    'touch-action:manipulation;-webkit-tap-highlight-color:transparent;';
+
+  // 별도 안내 배너 (줌 부족 시)
+  const cadHint = document.createElement('div');
+  cadHint.style.cssText =
+    'position:absolute;top:60px;left:10px;z-index:1000;' +
+    'padding:6px 10px;background:#fef3c7;color:#92400e;' +
+    'border:1px solid #fbbf24;border-radius:4px;font-size:11px;' +
+    'box-shadow:0 1px 3px rgba(0,0,0,0.15);display:none;';
+  cadHint.innerText = '🔍 핀치줌으로 더 확대 → 줌 14↑';
+
+  function refreshCadBtn() {{
+    const z = map.getZoom();
+    const on = !!cadastralLayer.getMap();
+    const enough = z >= CADASTRAL_MIN_ZOOM;
+    cadBtn.innerText = '🗺️ 지번 ' + (on ? 'ON' : 'OFF') + ' · zoom ' + z;
+    cadBtn.style.opacity = on ? '1' : '0.6';
+    cadBtn.style.background = (on && !enough) ? '#fff7ed' : 'white';
+    cadHint.style.display = (on && !enough) ? 'block' : 'none';
+  }}
   cadBtn.onclick = function() {{
     if (cadastralLayer.getMap()) {{
       cadastralLayer.setMap(null);
-      cadBtn.innerText = '🗺️ 지적편집도 OFF';
-      cadBtn.style.opacity = '0.6';
     }} else {{
       cadastralLayer.setMap(map);
-      cadBtn.innerText = '🗺️ 지적편집도 ON';
-      cadBtn.style.opacity = '1';
     }}
+    refreshCadBtn();
   }};
   document.getElementById('map').appendChild(cadBtn);
+  document.getElementById('map').appendChild(cadHint);
 
   const ZOOM_THRESHOLD = {zoom_label_threshold};
   function updateLabels() {{
@@ -249,7 +267,11 @@ if (typeof naver === 'undefined' || !naver.maps) {{
       else el.classList.remove('show');
     }});
   }}
-  naver.maps.Event.addListener(map, 'zoom_changed', updateLabels);
+  naver.maps.Event.addListener(map, 'zoom_changed', function() {{
+    updateLabels();
+    refreshCadBtn();
+  }});
+  refreshCadBtn();
 
   // 도로 라인
   const roads = {roads_json};
@@ -261,9 +283,14 @@ if (typeof naver === 'undefined' || !naver.maps) {{
     }});
   }});
 
-  // 폴리곤 — 평소엔 투명, 호버 시 지목 색
+  // 폴리곤 — 검색 결과 필지 (모바일 호환: 디폴트로도 보이게)
   const SEL = '{sel_color}';
   const polygons = {polygons_json};
+  // 모바일에서 호버 없으니 디폴트 strokeOpacity/Weight 강화
+  const IS_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const DEFAULT_FILL_OPACITY = IS_TOUCH ? 0.12 : 0.0;
+  const DEFAULT_STROKE_OPACITY = IS_TOUCH ? 0.85 : 0.4;
+  const DEFAULT_STROKE_WEIGHT = IS_TOUCH ? 2.0 : 0.8;
   polygons.forEach(p => {{
     const paths = p.coords.map(ring =>
       ring.map(c => new naver.maps.LatLng(c[1], c[0]))
@@ -272,10 +299,10 @@ if (typeof naver === 'undefined' || !naver.maps) {{
     const polygon = new naver.maps.Polygon({{
       map: map, paths: paths,
       fillColor: isSel ? SEL : p.color,
-      fillOpacity: isSel ? 0.45 : 0,
-      strokeColor: isSel ? SEL : '#ffffff',
-      strokeOpacity: isSel ? 1 : 0.3,
-      strokeWeight: isSel ? 3 : 0.5,
+      fillOpacity: isSel ? 0.45 : DEFAULT_FILL_OPACITY,
+      strokeColor: isSel ? SEL : p.color,
+      strokeOpacity: isSel ? 1 : DEFAULT_STROKE_OPACITY,
+      strokeWeight: isSel ? 3 : DEFAULT_STROKE_WEIGHT,
       clickable: true,
     }});
     const info = new naver.maps.InfoWindow({{
@@ -284,23 +311,33 @@ if (typeof naver === 'undefined' || !naver.maps) {{
       pixelOffset: new naver.maps.Point(0, -8),
     }});
     if (!isSel) {{
-      naver.maps.Event.addListener(polygon, 'mouseover', e => {{
+      const emphasize = (e) => {{
         polygon.setOptions({{
           fillOpacity: 0.45, strokeColor: p.color,
           strokeOpacity: 1, strokeWeight: 3,
         }});
-        info.open(map, e.coord);
-      }});
-      naver.maps.Event.addListener(polygon, 'mouseout', () => {{
+        if (e && e.coord) info.open(map, e.coord);
+      }};
+      const dim = () => {{
         polygon.setOptions({{
-          fillOpacity: 0, strokeColor: '#ffffff',
-          strokeOpacity: 0.3, strokeWeight: 0.5,
+          fillOpacity: DEFAULT_FILL_OPACITY, strokeColor: p.color,
+          strokeOpacity: DEFAULT_STROKE_OPACITY,
+          strokeWeight: DEFAULT_STROKE_WEIGHT,
         }});
         info.close();
+      }};
+      naver.maps.Event.addListener(polygon, 'mouseover', emphasize);
+      naver.maps.Event.addListener(polygon, 'mouseout', dim);
+      // 모바일/터치 탭 — 처음 탭 강조, 두 번째 탭 다시 옅게
+      let on = false;
+      naver.maps.Event.addListener(polygon, 'click', (e) => {{
+        if (on) {{ dim(); on = false; }}
+        else {{ emphasize(e); on = true; }}
       }});
     }} else {{
       naver.maps.Event.addListener(polygon, 'mouseover', e => info.open(map, e.coord));
       naver.maps.Event.addListener(polygon, 'mouseout', () => info.close());
+      naver.maps.Event.addListener(polygon, 'click', e => info.open(map, e.coord));
     }}
   }});
 
