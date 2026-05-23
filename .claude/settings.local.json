@@ -43,7 +43,17 @@
       "Bash(python -X utf8 search.py \"두창리 957-5같은데 면적 30평 이상\")",
       "Bash(python -X utf8 search.py \"근삼리 산75-1과 매우 비슷한\")",
       "Bash(python -X utf8 search.py \"근삼리 산75-1과 폭넓게 비슷한\")",
-      "Bash(python -X utf8 search.py \"근삼리 산75-1과 비슷한데 면적 ±20%\")"
+      "Bash(python -X utf8 search.py \"근삼리 산75-1과 비슷한데 면적 ±20%\")",
+      "Bash(gh release *)",
+      "Bash(gh auth *)",
+      "PowerShell(gh release list --limit 5)",
+      "PowerShell(gh auth status)",
+      "PowerShell($env:Path = [System.Environment]::GetEnvironmentVariable\\(\"Path\",\"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"Path\",\"User\"\\); gh --version 2>&1 | Select-Object -First 3; Write-Host \"---\"; gh auth status 2>&1 | Select-Object -First 5)",
+      "PowerShell($gh = \"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\"; if \\(-not \\(Test-Path $gh\\)\\) { $gh = \\(Get-ChildItem -Path \"$env:LOCALAPPDATA\\\\Microsoft\\\\WinGet\\\\Packages\" -Recurse -Filter gh.exe -ErrorAction SilentlyContinue | Select-Object -First 1\\).FullName }; Write-Host \"gh path: $gh\"; & $gh auth status 2>&1 | Select-Object -First 6; Write-Host \"---\"; & $gh release list --limit 5)",
+      "WebFetch(domain:www.valueupmap.com)",
+      "Bash(python -X utf8 build_parcel_shape.py)",
+      "Bash(python -X utf8 search.py \"원삼면 정방형 답 50평이상\")",
+      "Bash(python -X utf8 search.py \"두창리 957-5와 비슷한 매물 길쭉한거 빼고\")"
     ]
   }
 }

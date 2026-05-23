@@ -73,7 +73,9 @@ PARSER_SYSTEM = """당신은 한국 토지 실거래가 검색 시스템의 자�
   "exclude_road_access": "true=맹지만. '맹지만'→true (드문 표현)",
   "exclude_flood": "true=침수예상지역 제외. '침수 빼고'·'안전한'→true",
 
-  "reference_jibun": "특정 필지를 기준으로 '비슷한 조건' 검색할 때 그 필지 지번 (정규화 문자열). 예: '백암면 근삼리 산 75-1', '원삼면 두창리 957-5'. 표현: 'X와 비슷한 조건', 'X 같은 조건', 'X와 유사한 매물', 'X처럼 생긴 땅'. 시스템이 그 필지의 jimok/면적/해발/경사/맹지여부를 자동 추출해 cond에 채움. 사용자가 명시한 cond는 덮어쓰지 않음.",
+  "shape_include": "토지 형상 포함 배열. 가능: '정방형','장방형','길쭉형','L자형','불규칙'. '정방형만'→['정방형'], '직사각형에 가까운'→['정방형','장방형']",
+  "shape_exclude": "토지 형상 제외 배열. '길쭉한 모양 빼고'→['길쭉형'], 'L자형 빼고'→['L자형']",
+  "reference_jibun": "특정 필지를 기준으로 '비슷한 조건' 검색할 때 그 필지 지번 (정규화 문자열). 예: '백암면 근삼리 산 75-1', '원삼면 두창리 957-5'. 표현: 'X와 비슷한 조건', 'X 같은 조건', 'X와 유사한 매물', 'X처럼 생긴 땅'. 시스템이 그 필지의 jimok/면적/해발/경사/맹지여부/형상을 자동 추출해 cond에 채움. 사용자가 명시한 cond는 덮어쓰지 않음.",
   "similarity_level": "'X와 비슷한' 검색의 폭 강도. 'strict'(면적±15% 해발±30m 경사+3°) | 'normal'(±30% ±50m +5°, 기본) | 'loose'(±50% ±80m +10°). 표현: '매우 비슷한'·'정확히 같은'→strict, '비슷한'·'유사한'→normal, '폭넓게 비슷한'·'대충 비슷한'·'널널하게'→loose.",
   "area_tol_pct": "참조 필지 면적 허용 폭 %. '면적 ±20%'·'면적 20프로 안'→20. similarity_level보다 우선.",
   "elevation_tol_m": "참조 필지 해발 허용 폭 m. '해발 ±30m'·'해발 비슷한 30m 안'→30. similarity_level보다 우선.",
@@ -126,6 +128,15 @@ PARSER_SYSTEM = """당신은 한국 토지 실거래가 검색 시스템의 자�
 - "침수 빼고"·"침수예상 제외"·"안전한 곳" → exclude_flood=true
 - 복합: "관리지역 해발 100m 이상 맹지 아닌" →
   zone_include=["관리지역"], min_elevation_m=100, require_road_access=true
+
+**토지 형상 표현**:
+- "정방형만"·"네모반듯한"·"정사각형 가까운" → shape_include=["정방형"]
+- "직사각형"·"장방형" → shape_include=["장방형"]
+- "정방형 또는 장방형"·"직사각형에 가까운" → shape_include=["정방형","장방형"]
+- "길쭉한"·"길쭉하게 생긴" → shape_include=["길쭉형"]
+- "길쭉한 모양 빼고" → shape_exclude=["길쭉형"]
+- "L자 빼고"·"꺾인 모양 빼고" → shape_exclude=["L자형"]
+- "불규칙 빼고"·"모양 좋은" → shape_exclude=["불규칙","L자형"]
 
 **참조 필지(reference_jibun) 표현 — 'X와 비슷한 조건' 검색**:
 - "근삼리 산75-1과 비슷한 조건의 실거래가" → reference_jibun="근삼리 산 75-1"
@@ -343,7 +354,8 @@ def lookup_reference_parcel(conn, ref_str):
     params += patterns
     sql = (
         "SELECT pnu, jibun, jimok, area_m2, jiga, "
-        "elevation_m, slope_deg, has_road_access, zone_type, prefix8 "
+        "elevation_m, slope_deg, has_road_access, zone_type, prefix8, "
+        "shape_type "
         "FROM parcels WHERE " + " AND ".join(where)
         + " ORDER BY area_m2 DESC LIMIT 30"
     )
@@ -452,6 +464,23 @@ def fill_cond_from_reference(cond, ref_parcel):
     if zone and not cond.get("zone_include") and not cond.get("zone_exclude"):
         cond["zone_include"] = [zone]
         notes.append(f"zone_include=['{zone}']")
+    # 형상 (있으면) — 같은 카테고리에 인접 카테고리도 함께 (유사도 normal 이상)
+    shape = ref_parcel.get("shape_type")
+    if shape and not cond.get("shape_include") and not cond.get("shape_exclude"):
+        # 인접 형상 그룹 — strict면 단독, 그 외는 비슷한 모양도 포함
+        level = (cond.get("similarity_level") or "normal").lower()
+        if level == "strict":
+            cond["shape_include"] = [shape]
+        else:
+            neighbors = {
+                "정방형": ["정방형", "장방형"],
+                "장방형": ["정방형", "장방형"],
+                "길쭉형": ["길쭉형", "장방형"],
+                "L자형":  ["L자형", "불규칙"],
+                "불규칙": ["불규칙", "L자형"],
+            }
+            cond["shape_include"] = neighbors.get(shape, [shape])
+        notes.append(f"shape_include={cond['shape_include']}")
     return notes
 
 
@@ -659,6 +688,14 @@ def search(query: str):
         parcels_conds.append("(has_road_access IS NULL OR has_road_access = 0)")
     if cond.get("exclude_flood"):
         parcels_conds.append("(flood_risk IS NULL OR flood_risk = 0)")
+    if cond.get("shape_include"):
+        ss = cond["shape_include"]
+        parcels_conds.append(f"shape_type IN ({','.join('?' * len(ss))})")
+        parcels_params += ss
+    if cond.get("shape_exclude"):
+        ss = cond["shape_exclude"]
+        parcels_conds.append(f"shape_type NOT IN ({','.join('?' * len(ss))})")
+        parcels_params += ss
     if parcels_conds:
         where.append(
             "resolved_pnu IN (SELECT pnu FROM parcels WHERE "

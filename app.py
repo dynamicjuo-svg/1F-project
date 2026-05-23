@@ -523,6 +523,14 @@ def search_pipeline(query: str, include_road_jimok: bool):
         parcels_conds.append("(has_road_access IS NULL OR has_road_access = 0)")
     if cond.get("exclude_flood"):
         parcels_conds.append("(flood_risk IS NULL OR flood_risk = 0)")
+    if cond.get("shape_include"):
+        ss = cond["shape_include"]
+        parcels_conds.append(f"shape_type IN ({','.join('?' * len(ss))})")
+        parcels_params += ss
+    if cond.get("shape_exclude"):
+        ss = cond["shape_exclude"]
+        parcels_conds.append(f"shape_type NOT IN ({','.join('?' * len(ss))})")
+        parcels_params += ss
     if parcels_conds:
         where.append(
             "resolved_pnu IN (SELECT pnu FROM parcels WHERE "
@@ -602,49 +610,332 @@ def search_pipeline(query: str, include_road_jimok: bool):
 
 
 # =====================================================================
-#  Streamlit UI
+#  GPT 스타일 응답 — 파싱된 cond를 자연어 문장으로 풀이
 # =====================================================================
+def format_cond_as_sentence(cond, result):
+    """검색 의도를 자연어 문장 + 항목별 칩으로 정리."""
+    parts = []  # 본문 문장 조각
+    chips = []  # 시각적 태그용 (라벨, 값)
+
+    # 지역
+    emds = cond.get("emd_list") or ([cond["emd"]] if cond.get("emd") else [])
+    if emds:
+        parts.append(f"**{' · '.join(emds)}**")
+        for e in emds:
+            chips.append(("📍 지역", e))
+
+    # 참조 필지 우선
+    ref_info = result.get("reference_info") if isinstance(result, dict) else None
+    if ref_info and ref_info.get("ref"):
+        ref = ref_info["ref"]
+        py = ref["area_m2"] / 3.3058 if ref.get("area_m2") else 0
+        parts.append(
+            f"**{ref['jibun']}**({ref['jimok']}, {py:,.0f}평)과 비슷한 조건"
+        )
+        chips.append(("🎯 참조 필지", f"{ref['jibun']} · {py:,.0f}평"))
+        level = (cond.get("similarity_level") or "normal").lower()
+        level_kr = {"strict": "엄격", "normal": "보통", "loose": "넉넉"}.get(level, level)
+        chips.append(("⚖️ 유사도", level_kr))
+
+    # 지목
+    jms = cond.get("jimok_list") or []
+    if jms:
+        parts.append(f"지목 **{' · '.join(jms)}**")
+        chips.append(("🏷️ 지목", " · ".join(jms)))
+    ex_jms = cond.get("exclude_jimok_list") or []
+    if ex_jms:
+        chips.append(("🚫 지목 제외", " · ".join(ex_jms)))
+
+    # 면적
+    if cond.get("min_area_m2") and cond.get("max_area_m2"):
+        mn_py = cond["min_area_m2"] / 3.3058
+        mx_py = cond["max_area_m2"] / 3.3058
+        chips.append(("📐 면적", f"{mn_py:,.0f}~{mx_py:,.0f}평"))
+    elif cond.get("min_area_m2"):
+        chips.append(("📐 면적", f"{cond['min_area_m2']/3.3058:,.0f}평↑"))
+    elif cond.get("max_area_m2"):
+        chips.append(("📐 면적", f"{cond['max_area_m2']/3.3058:,.0f}평↓"))
+
+    # 금액 · 평단가
+    if cond.get("min_deal_amount") or cond.get("max_deal_amount"):
+        mn = cond.get("min_deal_amount") or 0
+        mx = cond.get("max_deal_amount") or 0
+        label = "💰 금액"
+        if mn and mx:
+            chips.append((label, f"{mn:,}~{mx:,}만원"))
+        elif mn:
+            chips.append((label, f"{mn:,}만원↑"))
+        else:
+            chips.append((label, f"{mx:,}만원↓"))
+    if cond.get("min_unit_per_pyeong") or cond.get("max_unit_per_pyeong"):
+        mn = cond.get("min_unit_per_pyeong") or 0
+        mx = cond.get("max_unit_per_pyeong") or 0
+        label = "💵 평단가"
+        if mn and mx:
+            chips.append((label, f"{mn}~{mx}만/평"))
+        elif mn:
+            chips.append((label, f"{mn}만/평↑"))
+        else:
+            chips.append((label, f"{mx}만/평↓"))
+
+    # 기간
+    start = result.get("start_ymd") if isinstance(result, dict) else None
+    end = result.get("end_ymd") if isinstance(result, dict) else None
+    if start and end:
+        chips.append(("📅 기간", f"{start[:7]} ~ {end[:7]}"))
+
+    # 도로
+    if result and result.get("matched_road"):
+        radius = cond.get("radius_m")
+        rs = result["matched_road"]
+        if "," in rs:
+            rs = rs.split(",")[0] + f" 외 {len(rs.split(','))-1}"
+        chips.append(("🛣️ 도로", f"{rs}" + (f" 반경 {radius/1000:g}km" if radius else "")))
+
+    # 입지/규제
+    if cond.get("min_elevation_m") is not None or cond.get("max_elevation_m") is not None:
+        mn = cond.get("min_elevation_m")
+        mx = cond.get("max_elevation_m")
+        if mn is not None and mx is not None:
+            chips.append(("⛰️ 해발", f"{mn:.0f}~{mx:.0f}m"))
+        elif mn is not None:
+            chips.append(("⛰️ 해발", f"{mn:.0f}m↑"))
+        else:
+            chips.append(("⛰️ 해발", f"{mx:.0f}m↓"))
+    if cond.get("max_slope_deg") is not None:
+        chips.append(("📉 경사", f"{cond['max_slope_deg']:g}°↓"))
+    if cond.get("require_road_access"):
+        chips.append(("🛤️ 도로 접면", "필수"))
+    if cond.get("exclude_road_access"):
+        chips.append(("🛤️ 도로 접면", "맹지만"))
+    if cond.get("max_stream_dist_m"):
+        chips.append(("🌊 하천", f"{cond['max_stream_dist_m']:g}m 이내"))
+    if cond.get("zone_include"):
+        chips.append(("🏛️ 용도지역", " · ".join(cond["zone_include"])))
+    if cond.get("zone_exclude"):
+        chips.append(("🏛️ 용도 제외", " · ".join(cond["zone_exclude"])))
+    if cond.get("exclude_gb"):
+        chips.append(("🚫", "그린벨트 제외"))
+    if cond.get("exclude_protected_forest"):
+        chips.append(("🚫", "보전산지 제외"))
+    if cond.get("exclude_farm_promote"):
+        chips.append(("🚫", "농업진흥구역 제외"))
+    if cond.get("exclude_flood"):
+        chips.append(("🚫", "침수예상 제외"))
+    if cond.get("exclude_shared"):
+        chips.append(("👤", "단독매매만"))
+
+    # 정렬
+    sort_by = cond.get("sort_by") or "deal_ymd"
+    sort_order = (cond.get("sort_order") or "desc").lower()
+    sort_label = {
+        "deal_ymd": "최근순" if sort_order == "desc" else "오래된순",
+        "unit_per_pyeong": "평단가 높은순" if sort_order == "desc" else "평단가 낮은순",
+        "area_m2": "면적 큰순" if sort_order == "desc" else "면적 작은순",
+        "deal_amount": "금액 높은순" if sort_order == "desc" else "금액 낮은순",
+    }.get(sort_by, sort_by)
+    chips.append(("⇅ 정렬", sort_label))
+
+    # 본문 문장
+    n_results = len(result.get("results", [])) if isinstance(result, dict) else 0
+    headline = " · ".join(parts) if parts else "조건에 맞는 거래"
+    sentence = f"{headline}의 실거래를 정리했습니다. 총 **{n_results:,}건** 매칭됐어요."
+
+    return sentence, chips
+
+
+# =====================================================================
+#  Streamlit UI — OneFamily 실거래가 (찐파랑 컨셉)
+# =====================================================================
+BRAND_NAVY = "#2563EB"       # 산뜻한 모던 파랑 (Tailwind blue-600)
+BRAND_NAVY_DEEP = "#1D4ED8"  # 강조 톤 (blue-700)
+BRAND_NAVY_LIGHT = "#EFF6FF" # 배경 옅은 파랑 (blue-50)
+
 st.set_page_config(
-    page_title="용인 토지 실거래 검색",
-    page_icon="🏞️", layout="wide",
+    page_title="OneFamily 실거래가",
+    page_icon="🏛️", layout="wide",
+    initial_sidebar_state="expanded",
 )
 
+# 글로벌 CSS — 모던 + 찐파랑
+st.markdown(f"""
+<style>
+  :root {{
+    --navy: {BRAND_NAVY};
+    --navy-deep: {BRAND_NAVY_DEEP};
+    --navy-light: {BRAND_NAVY_LIGHT};
+  }}
+  /* 간결한 헤더 */
+  .of-brand {{
+    display: flex; align-items: baseline; gap: 10px;
+    margin-bottom: 2px;
+  }}
+  .of-brand .of-logo {{
+    font-size: 22px; font-weight: 700; color: {BRAND_NAVY_DEEP};
+    letter-spacing: -0.02em;
+  }}
+  .of-brand .of-logo-accent {{ color: {BRAND_NAVY}; }}
+  .of-brand .of-badge {{
+    display: inline-block; background: {BRAND_NAVY_LIGHT};
+    color: {BRAND_NAVY_DEEP}; padding: 2px 8px; border-radius: 6px;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
+    border: 1px solid #dbeafe;
+  }}
+  .of-brand-sub {{
+    color: #64748b; font-size: 13px; margin-bottom: 18px;
+  }}
+  /* GPT 스타일 응답 카드 */
+  .of-gpt-card {{
+    background: white; border: 1px solid #e2e8f0;
+    border-left: 3px solid {BRAND_NAVY};
+    padding: 18px 20px; border-radius: 12px; margin: 18px 0;
+    font-size: 14.5px; line-height: 1.65; color: #1e293b;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }}
+  .of-gpt-card .of-gpt-icon {{
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; background: {BRAND_NAVY}; color: white;
+    border-radius: 7px; font-size: 11px; font-weight: 700;
+    margin-right: 9px; vertical-align: middle;
+    letter-spacing: 0.02em;
+  }}
+  .of-gpt-card .of-gpt-title {{
+    font-weight: 600; color: #475569; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 10px; display: flex; align-items: center;
+  }}
+  /* 모던 메트릭 */
+  div[data-testid="stMetric"] {{
+    background: white; padding: 16px 18px; border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  }}
+  div[data-testid="stMetric"] > div:first-child label {{
+    font-size: 11.5px !important; color: #64748b !important;
+    font-weight: 500 !important; text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }}
+  div[data-testid="stMetric"] [data-testid="stMetricValue"] {{
+    color: {BRAND_NAVY_DEEP}; font-weight: 700; font-size: 22px;
+  }}
+  /* primary 버튼 */
+  div.stButton > button[kind="primary"] {{
+    background: {BRAND_NAVY}; border: none;
+    font-weight: 600; letter-spacing: 0.01em;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
+    transition: all 0.15s ease;
+  }}
+  div.stButton > button[kind="primary"]:hover {{
+    background: {BRAND_NAVY_DEEP};
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+    transform: translateY(-1px);
+  }}
+  /* 사이드바 강조 박스 */
+  .of-scope-box {{
+    background: {BRAND_NAVY_LIGHT}; border-radius: 12px;
+    padding: 14px 14px; font-size: 13px; line-height: 1.55;
+    color: {BRAND_NAVY_DEEP}; margin-bottom: 10px;
+    border: 1px solid #dbeafe;
+  }}
+  .of-scope-box .of-scope-title {{
+    font-weight: 700; font-size: 11px; letter-spacing: 0.06em;
+    color: {BRAND_NAVY}; margin-bottom: 8px; text-transform: uppercase;
+  }}
+  .of-scope-box .of-scope-num {{
+    font-size: 17px; font-weight: 700; color: {BRAND_NAVY_DEEP};
+  }}
+  /* 검색 입력 박스 */
+  .stTextInput > div > div > input {{
+    font-size: 15px; padding: 12px 16px;
+    border-radius: 10px; border: 1.5px solid #e2e8f0;
+    transition: all 0.15s ease;
+  }}
+  .stTextInput > div > div > input:focus {{
+    border-color: {BRAND_NAVY};
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }}
+  /* 배경 톤 살짝 */
+  .main .block-container {{
+    padding-top: 2.4rem; padding-bottom: 4rem;
+  }}
+</style>
+""", unsafe_allow_html=True)
+
 with st.sidebar:
-    st.title("🏞️ 토지 실거래")
-    st.caption("자연어로 묻고 결과를 즉시")
+    st.markdown(
+        f"<div style='font-size:20px;font-weight:700;color:{BRAND_NAVY_DEEP};"
+        f"letter-spacing:-0.02em;'>🏛️ OneFamily</div>"
+        f"<div style='font-size:12px;color:#6b7280;margin-top:2px;'>실거래가 분석 도구</div>",
+        unsafe_allow_html=True,
+    )
     st.divider()
-    st.subheader("ℹ️ 테스트 범위")
-    st.info("**용인 처인구 백암면 · 원삼면**\n\n"
-            "5년치 (2021-01 ~ 2025-12)\n약 6,766건")
+    st.markdown(
+        f"""
+        <div class="of-scope-box">
+          <div class="of-scope-title">검색 대상 DB</div>
+          <div style="margin-bottom:4px;">📍 <b>용인 처인구 백암면 · 원삼면</b></div>
+          <div style="font-size:12px;color:#475569;">
+            기간: 2021-01-06 ~ 2026-05-20<br>
+            토지 거래 <span class="of-scope-num">7,442</span>건
+            (매칭 <b>2,232</b>건)<br>
+            필지 <span class="of-scope-num">68,393</span>개<br>
+            데이터 출처: 국토부 · V-World · SRTM 30m
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f"""
+        <div class="of-scope-box" style="background:#f8fafc;">
+          <div class="of-scope-title" style="color:#475569;">활용 가능 필터</div>
+          <div style="font-size:12px;color:#475569;line-height:1.7;">
+            ✓ 지목 · 면적 · 기간 · 금액 · 평단가<br>
+            ✓ 도로 반경 · 다중 도로 OR<br>
+            ✓ 해발 · 경사 · 맹지 · 공유지분<br>
+            ✓ 'X와 비슷한 조건' 참조 검색
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.divider()
-    st.subheader("⚙️ 표시 설정")
     include_road = st.toggle("도로 지목 포함", value=False,
                               help="국가·공공 수용 거래가 많아 기본 제외")
     st.divider()
-    st.subheader("⚠️ 한계")
-    st.caption(
-        "• **'대'**(대지) 거래는 토지+건물 합산일 수 있어 시세 왜곡 가능\n\n"
-        "• 별표 지번 복원 못 한 거래는 결과에서 제외\n\n"
-        "• 본 도구는 참고용. 실거래 시 등기부등본·현장 확인 필수"
-    )
-
-    with st.expander("🐛 디버그 (동기화 확인용)"):
+    with st.expander("⚠️ 활용 시 유의", expanded=False):
+        st.caption(
+            "• **'대'**(대지) 거래는 토지+건물 합산일 수 있어 시세 왜곡 가능\n\n"
+            "• 별표 지번 복원 못 한 거래(low)는 결과에서 제외\n\n"
+            "• 본 도구는 참고용. 실거래 시 등기부등본·현장 확인 필수"
+        )
+    with st.expander("🐛 디버그", expanded=False):
         st.caption(f"selected_pnu: `{st.session_state.get('selected_pnu')}`")
         st.caption(f"last_map_click_sig: `{st.session_state.get('last_map_click_sig')}`")
         st.caption(f"last_table_rows: `{st.session_state.get('last_table_rows')}`")
 
-st.title("🔍 자연어 토지 실거래 검색")
-st.caption(
-    '예시: "원삼면 임야 평당 100 미만 최근 1년" · '
-    '"덕평로 반경 3km 임야 1억 이하 면적 큰 순" · '
-    '"백암면 2024년 상반기 전·답 단독매매만"'
+# 간결한 헤더 — 로고 + 부제만
+st.markdown(
+    f"""
+    <div class="of-brand">
+      <div class="of-logo">One<span class="of-logo-accent">Family</span> 실거래가</div>
+      <span class="of-badge">용인 처인구 · 백암 / 원삼 테스트</span>
+    </div>
+    <div class="of-brand-sub">자연어 한 줄로 토지 실거래를 분석합니다</div>
+    <div style="font-size:12.5px;color:#64748b;margin-bottom:12px;line-height:1.7;">
+      예시 · "원삼면 임야 평당 100 미만 최근 1년"
+      &nbsp;·&nbsp; "지방도318 반경 5km 1억 이하"
+      &nbsp;·&nbsp; "두창리 957-5와 비슷한 조건"
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
 query = st.text_input(
-    "질의", placeholder="자연어로 원하는 조건을 한 줄 입력하세요",
+    "질의", placeholder="자연어로 원하는 조건을 한 줄 입력하세요 (예: 두창리 957-5와 비슷한 조건의 실거래가)",
     label_visibility="collapsed",
 )
-go = st.button("🔍 검색", type="primary", use_container_width=True)
+go = st.button("🔍 검색 시작", type="primary", use_container_width=True)
 
 if go and query:
     with st.spinner("자연어 분석 + 검색 중... (5초 정도)"):
@@ -670,7 +961,32 @@ if "result" in st.session_state:
         st.warning("⚠️ 테스트 버전은 **백암면 · 원삼면** 만 검색 가능. "
                    "그 외 지역은 무시.")
 
-    with st.expander("🔧 자연어 파싱 결과 (확인용)"):
+    # GPT 스타일 응답 카드 — 검색 의도 자연어 풀이 + 항목 칩
+    sentence, chips = format_cond_as_sentence(cond, result)
+    chip_html = "".join(
+        f'<span style="display:inline-block;background:{BRAND_NAVY_LIGHT};'
+        f'color:{BRAND_NAVY_DEEP};padding:4px 10px;border-radius:999px;'
+        f'font-size:12px;font-weight:500;margin:3px 4px 3px 0;'
+        f'border:1px solid #d4dcef;">'
+        f'<span style="opacity:0.7;margin-right:4px;">{label}</span>'
+        f'<b>{value}</b></span>'
+        for label, value in chips
+    )
+    st.markdown(
+        f"""
+        <div class="of-gpt-card">
+          <div class="of-gpt-title">
+            <span class="of-gpt-icon">OF</span>
+            OneFamily가 정리한 내용
+          </div>
+          <div style="margin-bottom:10px;">{sentence}</div>
+          <div>{chip_html}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("🔧 자연어 파싱 결과 (원본 JSON)"):
         cleaned = {k: v for k, v in cond.items()
                    if v is not None and v != [] and v != ""}
         st.json(cleaned)
