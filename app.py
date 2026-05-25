@@ -1139,12 +1139,78 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   color: white !important;
   border: none !important;
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35) !important;
-  transition: transform 0.12s ease, box-shadow 0.12s ease !important;
+  transition: background-color 0.12s ease, box-shadow 0.12s ease !important;
 }
+/* hover: 위치는 그대로, 색만 진하게 (사용자 요청: 위치 고정) */
 .of-search-float [data-testid="stFormSubmitButton"] button:hover {
-  transform: translateY(-50%) scale(1.06) !important;
-  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45) !important;
+  background: #b91c1c !important;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.55) !important;
 }
+.of-search-float [data-testid="stFormSubmitButton"] button:active {
+  background: #991b1b !important;
+}
+
+/* 검색 로딩 오버레이 — 지루하지 않게 풀스크린 펄스 + 진행 텍스트 */
+.of-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  animation: of-fade-in 0.25s ease;
+}
+@keyframes of-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.of-loading-rings {
+  position: relative;
+  width: 110px;
+  height: 110px;
+}
+.of-loading-rings div {
+  position: absolute;
+  inset: 0;
+  border: 5px solid transparent;
+  border-top-color: #dc2626;
+  border-radius: 50%;
+  animation: of-spin 1.1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+.of-loading-rings div:nth-child(2) {
+  inset: 14px;
+  border-top-color: #fbbf24;
+  animation-duration: 0.8s;
+  animation-direction: reverse;
+}
+.of-loading-rings div:nth-child(3) {
+  inset: 28px;
+  border-top-color: white;
+  animation-duration: 1.4s;
+}
+@keyframes of-spin { to { transform: rotate(360deg); } }
+.of-loading-text {
+  color: white;
+  font-family: 'Archivo Black', 'Pretendard', sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+.of-loading-sub {
+  color: rgba(255,255,255,0.7);
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  font-family: 'Pretendard', sans-serif;
+  animation: of-pulse 1.6s ease-in-out infinite;
+}
+@keyframes of-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+/* streamlit 기본 spinner는 숨김 (우리 커스텀 사용) */
+div[data-testid="stSpinner"] { display: none !important; }
 /* 검색 input 내부에 아이콘 — input wrapper에 relative position 부여 */
 .of-search-icon-form > div { position: relative !important; }
 .of-search-icon-form .stTextInput > div > div > input {
@@ -1794,12 +1860,22 @@ with st.expander("📋 매물 교차 검증", expanded=False):
 st.markdown('</div>', unsafe_allow_html=True)  # /of-narrow-wrap (매물검증)
 
 if go and query:
-    with st.spinner("자연어 분석 + 검색 중... (5초 정도)"):
-        try:
-            result = search_pipeline(query, include_road_jimok=include_road)
-        except Exception as e:
-            st.error(f"검색 오류: {type(e).__name__}: {e}")
-            st.stop()
+    # 풀스크린 로딩 오버레이 (3겹 회전 링 + 텍스트)
+    loading_ph = st.empty()
+    loading_ph.markdown("""
+    <div class="of-loading-overlay">
+      <div class="of-loading-rings"><div></div><div></div><div></div></div>
+      <div class="of-loading-text">🔍 분석 중</div>
+      <div class="of-loading-sub">자연어를 조건으로 변환하고 DB에서 필지·거래를 매칭합니다...</div>
+    </div>
+    """, unsafe_allow_html=True)
+    try:
+        result = search_pipeline(query, include_road_jimok=include_road)
+    except Exception as e:
+        loading_ph.empty()
+        st.error(f"검색 오류: {type(e).__name__}: {e}")
+        st.stop()
+    loading_ph.empty()
     st.session_state.result = result
     st.session_state.selected_pnu = None
     st.session_state.last_map_click_sig = None
