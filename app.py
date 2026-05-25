@@ -1512,29 +1512,38 @@ components.html("""
   }
 
   function applyFullscreenMap() {
-    // 지도 iframe (height=540으로 호출됨)을 100vh로 강제
+    // 지도 iframe (height=540)을 viewport 전체에 fixed로 깔기 (z-index 1)
     var nMaps = 0;
     doc.querySelectorAll('iframe').forEach(function(f) {
       var h = parseInt(f.getAttribute('height') || '0');
       var src = (f.src || '') + (f.title || '');
-      var isMap = (h === 540) || (src.indexOf('naver') >= 0)
-        || (src.indexOf('540') >= 0);
+      var isMap = (h === 540) || (src.indexOf('naver') >= 0);
       if (isMap) {
         f.style.height = '100vh';
-        f.style.minHeight = '100vh';
-        f.style.width = '100%';
+        f.style.width = '100vw';
         f.style.display = 'block';
+        f.style.border = 'none';
         nMaps++;
-        // 부모 element-container까지 100vh 강제
-        var p = f.parentElement;
+        // 가장 가까운 element-container를 fixed로
+        var ec = f.parentElement;
         var depth = 0;
-        while (p && p !== doc.body && depth < 4) {
-          p.style.height = '100vh';
-          p.style.minHeight = '100vh';
-          p.style.maxHeight = '100vh';
-          p.style.margin = '0';
-          p.style.padding = '0';
-          p = p.parentElement;
+        while (ec && ec !== doc.body && depth < 6) {
+          if (ec.classList && (
+              ec.classList.contains('element-container') ||
+              (ec.getAttribute && ec.getAttribute('data-testid') === 'element-container'))) {
+            ec.style.position = 'fixed';
+            ec.style.top = '0';
+            ec.style.left = '0';
+            ec.style.right = '0';
+            ec.style.bottom = '0';
+            ec.style.width = '100vw';
+            ec.style.height = '100vh';
+            ec.style.zIndex = '1';
+            ec.style.margin = '0';
+            ec.style.padding = '0';
+            break;
+          }
+          ec = ec.parentElement;
           depth++;
         }
       }
