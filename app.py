@@ -1073,6 +1073,15 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   box-shadow: 2px 2px 0 #0a0a0a !important;
 }
 
+/* 사이드바 완전 제거 — 시안 4 */
+section[data-testid="stSidebar"] { display: none !important; }
+button[data-testid="stSidebarToggleButton"] { display: none !important; }
+button[data-testid="stExpandSidebarButton"] { display: none !important; }
+button[data-testid="stSidebarCollapseButton"] { display: none !important; }
+button[data-testid="collapsedControl"] { display: none !important; }
+button[kind="header"] { display: none !important; }
+div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
+
 /* PC (>=769px) — 시안 4 풀스크린 컨셉 */
 @media (min-width: 769px) {
   section.main > div.block-container {
@@ -1080,22 +1089,10 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
     padding-right: 16px !important; padding-bottom: 0 !important;
     max-width: 100% !important;
   }
-  /* main이 viewport 100% 차지 — 사이드바는 absolute로 띄움 */
+  /* main이 viewport 100% 차지 */
   section.main {
     margin-left: 0 !important;
     width: 100% !important;
-  }
-  /* 사이드바를 main 위에 overlay로 (열렸을 때만 자리 차지) */
-  section[data-testid="stSidebar"] {
-    position: absolute !important;
-    z-index: 200 !important;
-    height: 100vh !important;
-  }
-  section[data-testid="stSidebar"] > div:first-child {
-    background: rgba(254, 243, 199, 0.97) !important;
-    border-right: 3px solid #0a0a0a !important;
-    box-shadow: 5px 0 0 #dc2626;
-    width: 360px !important;
   }
   /* 지도 iframe 풀 viewport */
   div[data-testid="column"] iframe[height="540"] {
@@ -1233,111 +1230,9 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
 ">📋 거래목록</div>
 """, unsafe_allow_html=True)
 
-with st.sidebar:
-    st.markdown(
-        f"""
-        <div style='display:flex;align-items:center;gap:10px;margin-bottom:4px;'>
-          <div style='width:36px;height:36px;background:{BRAND_RED};
-                      border:3px solid {BRAND_NAVY};box-shadow:3px 3px 0 {BRAND_NAVY};
-                      display:flex;align-items:center;justify-content:center;
-                      color:white;font-family:"Archivo Black";font-size:12px;'>OF</div>
-          <div style='font-family:"Archivo Black";font-size:18px;color:{BRAND_NAVY};
-                      letter-spacing:-0.02em;'>OneFamily</div>
-        </div>
-        <div style='font-size:11px;color:#6a6a6a;margin-top:2px;font-weight:600;
-                    letter-spacing:0.04em;text-transform:uppercase;'>실거래가 분석 도구</div>
-        <div style='font-family:"Archivo Black";font-size:9px;color:#999;
-                    letter-spacing:0.1em;margin-top:6px;'>{APP_VERSION} · {APP_RELEASE_DATE}</div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.divider()
-    # DB 통계 동적 산출 (캐싱)
-    @st.cache_data(ttl=300)
-    def _db_stats():
-        c = get_conn()
-        n_trades = c.execute("SELECT COUNT(*) FROM trades").fetchone()[0]
-        n_high = c.execute(
-            "SELECT COUNT(*) FROM trades WHERE match_confidence='high'"
-        ).fetchone()[0]
-        n_parcels = c.execute("SELECT COUNT(*) FROM parcels").fetchone()[0]
-        mn = c.execute("SELECT MIN(deal_ymd) FROM trades").fetchone()[0] or "—"
-        mx = c.execute("SELECT MAX(deal_ymd) FROM trades").fetchone()[0] or "—"
-        n_anomaly = c.execute(
-            "SELECT COUNT(*) FROM trades WHERE price_anomaly IS NOT NULL"
-        ).fetchone()[0]
-        # 시군구별 분포 (parcels.prefix8 기준)
-        sigg_dist = []
-        for r in c.execute(
-            "SELECT SUBSTR(prefix8,1,5) sgg, COUNT(*) FROM parcels "
-            "WHERE prefix8 IS NOT NULL GROUP BY sgg ORDER BY 1"):
-            sigg_dist.append((r[0], r[1]))
-        # trades 시군구별
-        sigg_trades = {}
-        for r in c.execute(
-            "SELECT sigg_cd, COUNT(*) FROM trades WHERE sigg_cd IS NOT NULL "
-            "GROUP BY sigg_cd"):
-            sigg_trades[str(r[0])] = r[1]
-        return (n_trades, n_high, n_parcels, mn[:10], mx[:10], n_anom_var := n_anomaly,
-                sigg_dist, sigg_trades)
-
-    n_trades, n_high, n_parcels, mn, mx, n_anom, sigg_dist, sigg_trades = _db_stats()
-    SIGG_NAME = {"41461": "처인구", "41463": "기흥구", "41465": "수지구"}
-    sigg_lines = "<br>".join(
-        f"&nbsp;&nbsp;<b>{SIGG_NAME.get(sgg, sgg)}</b>: 거래 "
-        f"{sigg_trades.get(sgg, 0):,} · 필지 {n_p:,}"
-        for sgg, n_p in sigg_dist
-    )
-    st.markdown(
-        f"""
-        <div class="of-scope-box">
-          <div class="of-scope-title">검색 대상 DB</div>
-          <div style="margin-bottom:6px;font-size:14px;">📍 <b>용인시 3개구 · 42개 읍·면·동</b></div>
-          <div style="font-size:12px;color:{BRAND_NAVY};line-height:1.65;">
-            기간: {mn} ~ {mx}<br>
-            {sigg_lines}<br>
-            <b style="color:{BRAND_RED};">전체</b>: 토지 거래 <span class="of-scope-num">{n_trades:,}</span>건
-            (매칭 <b>{n_high:,}</b> · 이상치 <b>{n_anom:,}</b>)<br>
-            전체 필지 <span class="of-scope-num">{n_parcels:,}</span>개<br>
-            <span style="font-size:10.5px;opacity:0.7;">국토부 · V-World · SRTM 30m</span>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        f"""
-        <div class="of-scope-box" style="background:#f8fafc;">
-          <div class="of-scope-title" style="color:#475569;">활용 가능 필터</div>
-          <div style="font-size:12px;color:#475569;line-height:1.7;">
-            ✓ 지목 · 면적 · 기간 · 금액 · 평단가<br>
-            ✓ 도로 반경 · 다중 도로 OR<br>
-            ✓ 해발 · 경사 · 맹지 · 공유지분<br>
-            ✓ 형상(정방형/길쭉형/L자) · <b>접도/코너</b><br>
-            ✓ 'X와 비슷한 조건' 참조 검색
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.divider()
-    include_road = st.toggle("도로 지목 포함", value=False,
-                              help="국가·공공 수용 거래가 많아 기본 제외")
-    st.divider()
-    with st.expander("⚠️ 활용 시 유의", expanded=False):
-        st.caption(
-            "• **'대'**(대지) 거래는 토지+건물 합산일 수 있어 시세 왜곡 가능\n\n"
-            "• 별표 지번 복원 못 한 거래(low)는 결과에서 제외\n\n"
-            "• 본 도구는 참고용. 실거래 시 등기부등본·현장 확인 필수"
-        )
-    with st.expander("🐛 디버그", expanded=False):
-        st.caption(f"selected_pnu: `{st.session_state.get('selected_pnu')}`")
-        st.caption(f"last_table_rows: `{st.session_state.get('last_table_rows')}`")
-        st.caption(f"_of_last_map_click_ts: `{st.session_state.get('_of_last_map_click_ts')}`")
-        # 표 위젯 상태 직접 조회 (key="of_trades_table"로 보존)
-        tbl_state = st.session_state.get("of_trades_table")
-        if tbl_state is not None:
-            st.caption(f"of_trades_table.selection: `{tbl_state}`")
+# 사이드바 제거됨 (시안 4: 지도 풀스크린 컨셉)
+# include_road 옵션은 hardcode (필요시 검색 form 안 옵션으로 추가 가능)
+include_road = False
 
 # 시안 4: PC에서는 슬림한 상단 띠 (로고+배지+버전만), 모바일에서는 크게
 st.markdown(
