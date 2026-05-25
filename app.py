@@ -1047,15 +1047,24 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   margin-left: auto; font-family: 'Archivo Black', monospace;
   font-size: 10px; color: #6a6a6a; letter-spacing: 0.08em;
 }
-/* 검색창 폭 + 매물검증 expander 폭 — 좁게 */
-.of-narrow-wrap { max-width: 520px; margin: 8px 0 10px 0; }
-/* 검색 form 자체에 직접 폭 적용 — streamlit element-container가 흐름 막아서 */
-section.main form[data-testid="stForm"] {
-  max-width: 520px !important;
+/* 검색 form을 지도 위 floating으로 (JS가 of-search-float class 부여) */
+.element-container.of-search-float {
+  position: fixed !important;
+  top: 70px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 560px !important;
+  max-width: calc(100vw - 28px) !important;
+  z-index: 150 !important;
+  background: rgba(254, 249, 195, 0.95);
+  border: 3px solid #0a0a0a;
+  box-shadow: 4px 4px 0 #dc2626;
+  padding: 8px 10px;
+  backdrop-filter: blur(3px);
 }
-/* 매물 교차 검증 expander도 직접 폭 적용 */
-section.main div[data-testid="stExpander"]:has(summary:not(:empty)) {
-  max-width: 520px !important;
+.element-container.of-search-float form[data-testid="stForm"] {
+  background: transparent !important; border: none !important;
+  box-shadow: none !important; padding: 0 !important;
 }
 /* 검색 input 내부에 아이콘 — input wrapper에 relative position 부여 */
 .of-search-icon-form > div { position: relative !important; }
@@ -1402,23 +1411,33 @@ components.html("""
   }
 
   function applyNarrowWidth() {
-    var form = doc.querySelector('form[data-testid="stForm"]');
-    if (form) {
-      form.style.maxWidth = '520px';
-      var ec = form.closest('.element-container');
-      if (ec) ec.style.maxWidth = '520px';
-    }
+    // 매물 교차 검증 expander hide
     doc.querySelectorAll('div[data-testid="stExpander"]').forEach(function(ex) {
-      ex.style.maxWidth = '520px';
-      var ec = ex.closest('.element-container');
-      if (ec) ec.style.maxWidth = '520px';
+      var summary = ex.querySelector('summary');
+      if (summary && summary.textContent.indexOf('매물 교차 검증') >= 0) {
+        var ec = ex.closest('.element-container');
+        if (ec) ec.style.display = 'none';
+        else ex.style.display = 'none';
+      }
     });
+  }
+
+  function applySearchFloat() {
+    // 검색 form을 지도 위 floating으로 (상단 가운데)
+    var form = doc.querySelector('form[data-testid="stForm"]');
+    if (!form) return;
+    var ec = form.closest('.element-container');
+    if (!ec) return;
+    if (!ec.classList.contains('of-search-float')) {
+      ec.classList.add('of-search-float');
+    }
   }
 
   function applyAll() {
     try { applyDrawer(); } catch(e) {}
     try { applySummaryOverlay(); } catch(e) {}
     try { applyNarrowWidth(); } catch(e) {}
+    try { applySearchFloat(); } catch(e) {}
   }
   applyAll();
   setInterval(applyAll, 500);
@@ -1458,8 +1477,9 @@ with st.form(key="of_search_form", clear_on_submit=False, border=False):
     go = st.form_submit_button("🔍", type="primary", help="검색")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# 매물 교차 검증 — 폭 좁게 (검색창과 동일)
-st.markdown('<div class="of-narrow-wrap">', unsafe_allow_html=True)
+# 매물 교차 검증 — 사용자 요청으로 UI 완전 숨김 (디버깅용으로만 사용했음)
+# 코드는 보존하되 hidden div로 감쌈
+st.markdown('<div style="display:none;" class="of-narrow-wrap">', unsafe_allow_html=True)
 with st.expander("📋 매물 교차 검증", expanded=False):
     st.markdown(
         f"<div style='font-size:13px;color:#475569;margin-bottom:8px;line-height:1.6;'>"
