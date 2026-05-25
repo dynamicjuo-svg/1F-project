@@ -82,7 +82,9 @@ let _cadastralLayer = null;
 function loadSDK(clientId, cb) {
   if (_sdkLoaded) { cb(); return; }
   const s = document.createElement("script");
-  s.src = "https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=" + clientId;
+  // CadastralLayer(지적편집도)는 submodules=cadastral 필요
+  s.src = "https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId="
+    + clientId + "&submodules=cadastral";
   s.onload = function() { _sdkLoaded = true; cb(); };
   s.onerror = function() {
     document.getElementById("map").innerHTML =
