@@ -1258,11 +1258,43 @@ div[role="dialog"],
 div[data-testid="stDialog"],
 div[data-testid="stModal"] {
   z-index: 99999 !important;
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: white !important;
+  pointer-events: auto !important;
 }
-/* dialog backdrop도 위로 */
+/* dialog backdrop — 검정 반투명 */
 div[data-testid="stDialogBackdrop"],
 div[data-testid="stModalBackdrop"] {
   z-index: 99998 !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+}
+/* dialog 안 모든 element 강제 visible (우리 fixed CSS가 dialog 안에도 적용되지 않도록) */
+div[role="dialog"] *,
+div[data-testid="stDialog"] * {
+  visibility: visible !important;
+}
+/* dialog 안의 element-container는 fixed 적용 안 함 */
+div[role="dialog"] .element-container,
+div[role="dialog"] [data-testid="element-container"] {
+  position: static !important;
+  height: auto !important;
+  width: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  top: auto !important; left: auto !important;
+  right: auto !important; bottom: auto !important;
+}
+/* dialog 안 iframe (지도 안 들어가지만 안전) */
+div[role="dialog"] iframe {
+  position: static !important;
+  height: auto !important;
+  width: 100% !important;
 }
 @media (min-width: 769px) {
   div[role="dialog"] {
@@ -1273,6 +1305,7 @@ div[data-testid="stModalBackdrop"] {
     background: white !important;
     border-radius: 14px !important;
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.30) !important;
+    padding: 20px 24px !important;
   }
 }
 
