@@ -1524,13 +1524,28 @@ div[role="dialog"] iframe {
 /* PC (>=769px) — 시안 4 풀스크린 컨셉 */
 @media (min-width: 769px) {
   section.main > div.block-container {
-    padding: 0 !important;
+    padding-top: 92px !important;   /* 검색 form (top:22+52+14 margin) 아래로 */
+    padding-left: 16px !important;
+    padding-right: 460px !important; /* 우측 사이드패널(420) 자리 */
+    padding-bottom: 0 !important;
     max-width: 100vw !important;
   }
-  /* main이 viewport 100% 차지 */
   section.main {
     margin-left: 0 !important;
     width: 100% !important;
+    position: relative !important;
+    z-index: 0;
+  }
+  /* main 안 element-container들이 지도(z:1) 위에 보이게 */
+  section.main [data-testid="element-container"],
+  section.main .element-container {
+    position: relative;
+    z-index: 50;
+  }
+  /* 결과 카드(GPT, 시세요약 등)를 둘러싼 wrapper 명시 */
+  .of-gpt-card {
+    position: relative;
+    z-index: 50;
   }
   /* 헤더(of-brand-slim)를 지도 위 fixed 띠로 */
   .of-brand-slim {
