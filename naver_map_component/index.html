@@ -281,7 +281,7 @@ function renderMap(args) {
     const cadHint = document.createElement('div');
     const dbgBox = document.createElement('div');
     cadBtn.style.cssText =
-      'position:absolute;top:10px;right:10px;z-index:1000;' +
+      'position:absolute;top:10px;left:10px;z-index:1000;' +
       'padding:8px 12px;background:#0a0a0a;color:#fbbf24;' +
       'border:2px solid #0a0a0a;cursor:pointer;font-size:12px;font-weight:700;' +
       'font-family:"Archivo Black",sans-serif;letter-spacing:0.04em;' +
@@ -302,8 +302,13 @@ function renderMap(args) {
     dbgBox.innerText = 'debug …';
     function refreshCad() {
       const on = !!_cadastralLayer.getMap();
-      cadBtn.innerText = on ? '🗺️ 지적편집도 ON' : '🗺️ 지적편집도 OFF';
-      cadBtn.style.opacity = on ? '1' : '0.65';
+      const z = map.getZoom();
+      cadBtn.innerText = (on ? '🗺️ 지적편집도 ON' : '🗺️ 지적편집도 OFF')
+        + (on && z < 14 ? ' (줌↑필요)' : '');
+      // 시각적으로 ON/OFF 차이 강조: ON=빨강 BG, OFF=검정 BG
+      cadBtn.style.background = on ? '#dc2626' : '#0a0a0a';
+      cadBtn.style.color = on ? '#ffffff' : '#fbbf24';
+      cadBtn.style.boxShadow = on ? '3px 3px 0 #0a0a0a' : '3px 3px 0 #dc2626';
     }
     cadBtn.onclick = function() {
       if (_cadastralLayer.getMap()) _cadastralLayer.setMap(null);
