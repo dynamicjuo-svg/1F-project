@@ -1253,36 +1253,143 @@ div[data-testid="stStatusWidget"] { display: none !important; }
 /* body/html 자체 viewport 고정 (스크롤 제거) */
 body, html { overflow: hidden !important; height: 100vh !important; }
 
-/* 결과 영역(GPT 카드 + 시세 요약 + 평단가 caption) — 지도 위 좌측 floating */
+/* 결과 영역(GPT 카드 + 시세 요약) — 검색창 바로 아래 가운데, 모던 glass */
 .of-summary-overlay {
   position: fixed;
-  left: 14px;
-  top: 220px;
-  width: 380px;
-  max-height: calc(100vh - 240px);
+  top: 88px;                          /* 검색창(22+52) + 14 margin */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 480px;
+  max-width: calc(100vw - 28px);
+  max-height: calc(100vh - 110px);
   overflow-y: auto;
   z-index: 100;
-  background: rgba(254, 249, 195, 0.95);
-  border: 3px solid #0a0a0a;
-  box-shadow: 5px 5px 0 #dc2626;
-  padding: 12px 14px;
-  backdrop-filter: blur(3px);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12),
+              0 2px 6px rgba(15, 23, 42, 0.05);
+  padding: 14px 16px 12px 16px;
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
 }
+/* 닫기 버튼 (JS가 inject) */
+.of-summary-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.08);
+  color: #475569;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.of-summary-close:hover {
+  background: #dc2626;
+  color: white;
+}
+/* 숨김 상태 */
+.of-summary-overlay.collapsed { display: none; }
+/* 다시 열기 핸들 (닫혔을 때 작은 버튼) */
+.of-summary-handle {
+  position: fixed;
+  top: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.10);
+  backdrop-filter: blur(10px);
+  display: none;
+}
+.of-summary-handle.show { display: block; }
+
 .of-summary-overlay > .element-container { width: 100% !important; }
 .of-summary-overlay div[data-testid="stMetric"] {
-  padding: 6px 8px !important;
-  border: 2px solid #0a0a0a !important;
-  background: white !important;
-  margin: 4px 0 !important;
+  padding: 8px 10px !important;
+  background: #f8fafc !important;
+  border: 1px solid rgba(15, 23, 42, 0.06) !important;
+  border-radius: 10px !important;
+  margin: 0 !important;
+  text-align: center;
 }
-.of-summary-overlay div[data-testid="stMetricValue"] { font-size: 16px !important; }
-.of-summary-overlay div[data-testid="stMetricLabel"] { font-size: 10px !important; }
+.of-summary-overlay div[data-testid="stMetricValue"] {
+  font-size: 17px !important;
+  font-weight: 700;
+  color: #0f172a !important;
+}
+.of-summary-overlay div[data-testid="stMetricLabel"] {
+  font-size: 10.5px !important;
+  color: #64748b !important;
+  letter-spacing: 0.02em;
+}
+.of-summary-overlay [data-testid="stHorizontalBlock"] { gap: 8px !important; }
+
+/* GPT 카드 — 모던 흰 BG + 빨강 액센트 (Brutalist override) */
 .of-summary-overlay .of-gpt-card {
-  padding: 10px 12px !important; margin: 0 0 10px 0 !important;
-  font-size: 12.5px !important; box-shadow: 4px 4px 0 #dc2626 !important;
+  background: linear-gradient(135deg, #fef9f6 0%, #ffffff 100%) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(220, 38, 38, 0.18) !important;
+  border-left: 4px solid #dc2626 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.08) !important;
+  padding: 12px 14px !important;
+  margin: 0 0 12px 0 !important;
+  font-size: 13.5px !important;
+  line-height: 1.55;
+}
+.of-summary-overlay .of-gpt-card .of-gpt-title {
+  color: #dc2626 !important;
+  font-size: 12px !important;
+  margin-bottom: 8px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.of-summary-overlay .of-gpt-card .of-gpt-icon {
+  background: #dc2626 !important;
+  color: white !important;
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 10px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.of-summary-overlay .of-gpt-card b {
+  color: #dc2626 !important;
+  font-weight: 700;
 }
 .of-summary-overlay h2, .of-summary-overlay h3 {
-  font-size: 14px !important; margin: 8px 0 4px 0 !important;
+  font-size: 12.5px !important;
+  margin: 10px 0 6px 0 !important;
+  color: #475569 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.of-summary-overlay .stCaption,
+.of-summary-overlay [data-testid="stCaptionContainer"] {
+  font-size: 11px !important;
+  color: #64748b !important;
+  margin-top: 6px !important;
 }
 
 /* PC (>=769px) — 시안 4 풀스크린 컨셉 */
@@ -1601,6 +1708,31 @@ components.html("""
     }
     startEc.style.display = 'none';
     endEc.style.display = 'none';
+
+    // 닫기 버튼 추가
+    var closeBtn = doc.createElement('button');
+    closeBtn.className = 'of-summary-close';
+    closeBtn.innerHTML = '✕';
+    closeBtn.title = '결과 카드 닫기';
+    closeBtn.onclick = function() {
+      wrapper.classList.add('collapsed');
+      var handle = doc.getElementById('of-summary-handle');
+      if (handle) handle.classList.add('show');
+    };
+    wrapper.insertBefore(closeBtn, wrapper.firstChild);
+
+    // 다시 열기 핸들 (닫혔을 때 작은 pill)
+    if (!doc.getElementById('of-summary-handle')) {
+      var handle = doc.createElement('button');
+      handle.id = 'of-summary-handle';
+      handle.className = 'of-summary-handle';
+      handle.innerHTML = '📋 결과 보기';
+      handle.onclick = function() {
+        wrapper.classList.remove('collapsed');
+        handle.classList.remove('show');
+      };
+      doc.body.appendChild(handle);
+    }
   }
 
   function applyNarrowWidth() {
