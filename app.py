@@ -1047,24 +1047,32 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   margin-left: auto; font-family: 'Archivo Black', monospace;
   font-size: 10px; color: #6a6a6a; letter-spacing: 0.08em;
 }
-/* 검색 form을 지도 위 floating으로 — class를 form 자체에 부여 */
+/* 검색 form — 모던 glass 스타일 (라운드 + 반투명 + subtle shadow) */
 .of-search-float {
   position: fixed !important;
-  top: 70px !important;
+  top: 22px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
-  width: 360px !important;
+  width: 420px !important;
   max-width: calc(100vw - 28px) !important;
   z-index: 150 !important;
-  background: rgba(254, 249, 195, 0.95) !important;
-  border: 3px solid #0a0a0a !important;
-  box-shadow: 4px 4px 0 #dc2626 !important;
-  padding: 6px 8px !important;
-  height: 56px !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12),
+              0 2px 6px rgba(15, 23, 42, 0.05) !important;
+  padding: 5px 6px 5px 18px !important;
+  height: 52px !important;
   overflow: visible !important;
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
 }
-/* form 안 모든 vertical block을 row flex로 + height 압축 */
+.of-search-float:focus-within {
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.16),
+              0 0 0 4px rgba(220, 38, 38, 0.10) !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+}
 .of-search-float [data-testid="stVerticalBlock"],
 .of-search-float [data-testid="stVerticalBlockBorderWrapper"],
 .of-search-float > div {
@@ -1078,7 +1086,6 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   padding: 0 !important;
   margin: 0 !important;
 }
-/* element-container도 flex item으로 (정렬 망가지지 않게) */
 .of-search-float [data-testid="element-container"],
 .of-search-float .element-container {
   flex: 1 1 auto !important;
@@ -1086,16 +1093,34 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   padding: 0 !important;
   width: auto !important;
 }
+/* input — border 없음, 투명 배경, 부드러운 글자 */
 .of-search-float input {
-  padding-right: 52px !important;
-  font-size: 14px !important;
+  padding: 0 50px 0 0 !important;
+  font-size: 14.5px !important;
   height: 42px !important;
   width: 100% !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #0f172a !important;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
-/* submit button = input 위 우측에 absolute */
+.of-search-float input::placeholder {
+  color: #94a3b8 !important;
+  font-weight: 400;
+}
+/* streamlit input wrapper 배경도 제거 */
+.of-search-float div[data-baseweb="input"],
+.of-search-float div[data-baseweb="base-input"] {
+  background: transparent !important;
+  border: none !important;
+}
+/* submit button — 우측에 작은 원형 빨강 */
 .of-search-float [data-testid="stFormSubmitButton"] {
   position: absolute !important;
-  right: 6px !important;
+  right: 4px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
   z-index: 5;
@@ -1104,12 +1129,21 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   width: auto !important;
 }
 .of-search-float [data-testid="stFormSubmitButton"] button {
-  height: 36px !important;
-  width: 42px !important;
+  height: 38px !important;
+  width: 38px !important;
   min-width: 0 !important;
   padding: 0 !important;
   font-size: 16px !important;
-  box-shadow: 2px 2px 0 #0a0a0a !important;
+  border-radius: 50% !important;
+  background: #dc2626 !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35) !important;
+  transition: transform 0.12s ease, box-shadow 0.12s ease !important;
+}
+.of-search-float [data-testid="stFormSubmitButton"] button:hover {
+  transform: translateY(-50%) scale(1.06) !important;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45) !important;
 }
 /* 검색 input 내부에 아이콘 — input wrapper에 relative position 부여 */
 .of-search-icon-form > div { position: relative !important; }
