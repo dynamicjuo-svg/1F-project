@@ -2737,17 +2737,24 @@ if "result" in st.session_state:
         unsafe_allow_html=True,
     )
     if prev_selected_pnu:
-        # 닫기 버튼 클릭 시 selected_pnu = None
-        st.markdown('<div id="of-dialog-start"></div>', unsafe_allow_html=True)
-        try:
-            show_parcel_dialog(prev_selected_pnu)
-        except Exception as _dlg_err:
-            import traceback
-            st.error(
-                f"dialog 에러: {type(_dlg_err).__name__}: {_dlg_err}\n\n"
-                f"```\n{traceback.format_exc()}\n```"
-            )
-        st.markdown('<div id="of-dialog-end"></div>', unsafe_allow_html=True)
+        # ⚠️ 임시 디버그: dialog 호출 SKIP — 페이지 깨짐 원인이 dialog인지 확인
+        st.markdown(
+            f'<div style="position:fixed;top:240px;left:10px;background:#1d4ed8;'
+            f'color:white;padding:8px 12px;z-index:99999;font-size:11px;'
+            f'border-radius:6px;font-family:monospace;">'
+            f'DIALOG SKIPPED: pnu={prev_selected_pnu}<br>'
+            f'화면 정상이면 dialog 호출이 문제, 여전히 깨지면 다른 곳'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        # 일단 호출 안 함:
+        # st.markdown('<div id="of-dialog-start"></div>', unsafe_allow_html=True)
+        # try:
+        #     show_parcel_dialog(prev_selected_pnu)
+        # except Exception as _dlg_err:
+        #     import traceback
+        #     st.error(f"dialog 에러: {type(_dlg_err).__name__}: {_dlg_err}\n\n```\n{traceback.format_exc()}\n```")
+        # st.markdown('<div id="of-dialog-end"></div>', unsafe_allow_html=True)
 
     # 시안 4: 지도가 main 전체. 표는 우측 드로어(of-drawer-container)로 빠짐.
     # 비율은 [1, 0.01] 정도로 col_table 거의 없앰 — JS가 fixed로 빼냄.
