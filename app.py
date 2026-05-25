@@ -1080,7 +1080,17 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
     padding-right: 16px !important; padding-bottom: 0 !important;
     max-width: 100% !important;
   }
-  /* 사이드바: 기본 collapse 상태로 유지, expanded 시에만 360px */
+  /* main이 viewport 100% 차지 — 사이드바는 absolute로 띄움 */
+  section.main {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+  /* 사이드바를 main 위에 overlay로 (열렸을 때만 자리 차지) */
+  section[data-testid="stSidebar"] {
+    position: absolute !important;
+    z-index: 200 !important;
+    height: 100vh !important;
+  }
   section[data-testid="stSidebar"] > div:first-child {
     background: rgba(254, 243, 199, 0.97) !important;
     border-right: 3px solid #0a0a0a !important;
@@ -1148,7 +1158,79 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   iframe[height="490"] { height: 70vh !important; }
   .of-narrow-wrap { max-width: 100% !important; }
 }
+
+/* 우측 드로어 핸들 — PC + 모바일 모두 표시 */
+#of-drawer-handle {
+  display: flex;
+  position: fixed;
+  top: 50%; right: 0;
+  transform: translateY(-50%);
+  background: #0a0a0a;
+  color: #fbbf24;
+  z-index: 9100;
+  padding: 14px 8px;
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  box-shadow: -3px 3px 0 rgba(0,0,0,0.3);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  user-select: none;
+}
 </style>
+
+<script>
+// col_table을 자동으로 fixed drawer로 변환 (페이지 로드 + 폴링)
+(function() {
+  function applyDrawer() {
+    var t = document.getElementById('of-tbl-anchor');
+    if (!t) return;
+    var col = t.parentElement;
+    while (col && !(col.getAttribute &&
+      (col.getAttribute('data-testid') === 'column' ||
+       col.getAttribute('data-testid') === 'stColumn'))) {
+      col = col.parentElement;
+      if (!col || col === document.body) return;
+    }
+    if (col && !col.classList.contains('of-drawer-container')) {
+      col.classList.add('of-drawer-container');
+      window._ofDrawerCol = col;
+    }
+  }
+  applyDrawer();
+  setInterval(applyDrawer, 500);
+})();
+</script>
+
+<div id="of-drawer-handle" onclick="
+  var col = window._ofDrawerCol;
+  if (!col) {
+    var t = document.getElementById('of-tbl-anchor');
+    if (t) {
+      col = t.parentElement;
+      while (col && !(col.getAttribute &&
+        (col.getAttribute('data-testid') === 'column' ||
+         col.getAttribute('data-testid') === 'stColumn'))) {
+        col = col.parentElement;
+        if (!col || col === document.body) { col = null; break; }
+      }
+    }
+  }
+  if (!col) return;
+  if (!col.classList.contains('of-drawer-container')) {
+    col.classList.add('of-drawer-container');
+  }
+  if (col.classList.contains('open')) {
+    col.classList.remove('open');
+    this.innerText = '📋 거래목록';
+  } else {
+    col.classList.add('open');
+    this.innerText = '✕ 닫기';
+  }
+">📋 거래목록</div>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
