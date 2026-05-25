@@ -1141,6 +1141,17 @@ button[data-testid="stSidebarCollapseButton"] { display: none !important; }
 button[data-testid="collapsedControl"] { display: none !important; }
 button[kind="header"] { display: none !important; }
 div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
+/* streamlit 자체 header/footer 제거 — 진짜 풀스크린 위해 */
+header[data-testid="stHeader"] { display: none !important; }
+div[data-testid="stHeader"] { display: none !important; }
+footer { display: none !important; }
+div[data-testid="stStatusWidget"] { display: none !important; }
+.viewerBadge_link__1S137 { display: none !important; }
+#MainMenu { display: none !important; }
+/* 헤더(.of-brand-slim) 제거 — 시안 4 최소 UI */
+.of-brand-slim { display: none !important; }
+/* body/html 자체 viewport 고정 (스크롤 제거) */
+body, html { overflow: hidden !important; height: 100vh !important; }
 
 /* 결과 영역(GPT 카드 + 시세 요약 + 평단가 caption) — 지도 위 좌측 floating */
 .of-summary-overlay {
