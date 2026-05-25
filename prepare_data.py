@@ -19,9 +19,15 @@ DB_PATH = os.path.join(HERE, "trades.db")
 
 DEFAULT_DB_URL = (
     "https://github.com/dynamicjuo-svg/1F-project/releases/download/"
-    "v1.0-data/trades.db"
+    "v1.2-data/trades.db"
 )
 DB_URL = os.environ.get("TRADES_DB_URL", DEFAULT_DB_URL)
+
+# 데이터 버전 식별 — 기존 trades.db가 이 버전 미만이면 재다운로드
+EXPECTED_VERSION = "v1.2"
+REQUIRED_COLUMNS = (
+    "road_frontage_m", "shape_type", "zone_detail", "is_corner_lot",
+)
 
 
 def fmt_size(n):
@@ -58,8 +64,24 @@ def main():
 
     if os.path.exists(DB_PATH):
         sz = os.path.getsize(DB_PATH)
-        print(f"✓ 이미 존재: {fmt_size(sz)}  → 다운로드 스킵")
-        return 0
+        # 컬럼 검증 — 구버전 trades.db면 강제 재다운로드
+        try:
+            import sqlite3
+            conn = sqlite3.connect(DB_PATH)
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(parcels)")}
+            conn.close()
+            missing = [c for c in REQUIRED_COLUMNS if c not in cols]
+            if missing:
+                print(f"⚠️ 구버전 trades.db 감지 (누락 컬럼: {missing})")
+                print(f"   재다운로드 — {EXPECTED_VERSION} 데이터셋 필요")
+                os.remove(DB_PATH)
+            else:
+                print(f"✓ 이미 존재: {fmt_size(sz)}  (스키마 {EXPECTED_VERSION} OK)")
+                return 0
+        except Exception as e:
+            print(f"⚠️ trades.db 검증 실패: {e} → 재다운로드")
+            try: os.remove(DB_PATH)
+            except: pass
 
     print(f"⬇ 다운로드 시작")
     print(f"  URL: {DB_URL}")
