@@ -106,9 +106,10 @@ function renderMap(args) {
   const map = _map;
   const SEL = args.sel_color || "#1e40af";
   const IS_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-  const DEFAULT_FILL_OPACITY = IS_TOUCH ? 0.12 : 0.0;
-  const DEFAULT_STROKE_OPACITY = IS_TOUCH ? 0.85 : 0.4;
-  const DEFAULT_STROKE_WEIGHT = IS_TOUCH ? 2.0 : 0.8;
+  // 임계 이상에서 폴리곤이 잘 보이게 — fill·stroke 모두 진하게
+  const DEFAULT_FILL_OPACITY = IS_TOUCH ? 0.15 : 0.18;
+  const DEFAULT_STROKE_OPACITY = IS_TOUCH ? 0.9 : 0.95;
+  const DEFAULT_STROKE_WEIGHT = IS_TOUCH ? 2.0 : 2.2;
   const ZOOM_THRESHOLD = args.zoom_label_threshold || 15;
 
   clearOverlays();
