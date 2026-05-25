@@ -2717,95 +2717,77 @@ if "result" in st.session_state:
             st.markdown(f"_PNU `{pnu}` 정보 없음_")
             return
 
-        py = (sel_parcel2["area_m2"] / PYEONG_PER_M2
-              if sel_parcel2["area_m2"] else 0)
-        addr = sel_parcel2["addr"] or ""
+        # 국토부 실거래 API 필드만 표시 (V-World/계산 데이터 제외)
+        # 그 필지의 모든 거래 (최신순) — 각 거래의 API raw 필드 정리
 
-        # 텍스트 정리용 helper
         def _fmt_amt(man):
-            """만원 단위 → 억 / 만 단위 표시"""
             if not man: return "—"
             if man >= 10000:
-                return f"{man/10000:,.2f}억"
+                return f"{man/10000:,.2f}억 ({man:,}만원)"
             return f"{man:,}만원"
 
-        # 도로 접면 라벨
-        front_m = sel_parcel2["road_frontage_m"]
-        n_sides = sel_parcel2["road_n_sides"]
-        is_corner = sel_parcel2["is_corner_lot"]
-        if front_m is not None and front_m > 0:
-            if is_corner:
-                access_label = f"코너 ({n_sides}면, {front_m:.0f}m)"
-            elif n_sides == 1:
-                access_label = f"1면 접도 ({front_m:.0f}m)"
-            else:
-                access_label = f"접면 ({front_m:.0f}m)"
-        elif sel_parcel2["has_road_access"] == 1:
-            access_label = "접면"
-        elif sel_parcel2["has_road_access"] == 0:
-            access_label = "맹지"
-        else:
-            access_label = "—"
+        if not sel_trades2:
+            st.markdown("_이 필지에 매칭된 국토부 실거래가 없습니다._")
+            return
 
-        # 최근 거래 정보
-        unit_prices = [t["unit_per_pyeong"] for t in sel_trades2
-                       if t["unit_per_pyeong"]]
-        latest = sel_trades2[0] if sel_trades2 else None
-        latest_amt = _fmt_amt(latest["deal_amount"]) if latest else "—"
-        latest_unit = (f"{int(latest['unit_per_pyeong']):,}만/평"
-                       if latest and latest["unit_per_pyeong"] else "—")
-        latest_date = latest["deal_ymd"][:10] if latest else "—"
+        # 거래마다 한 섹션
+        trade_blocks = []
+        for i, t in enumerate(sel_trades2):
+            san_str = "산 " if t["is_san"] else ""
+            jibun_str = san_str + (t["jibun_masked"] or "?")
+            trade_blocks.append(f"""
+<div class='of-parcel-section'>거래 #{i+1} · {t['deal_ymd'][:10]}</div>
+<div class='of-parcel-row'>
+  <span class='of-k'>sggCd (시군구코드)</span>
+  <span class='of-v'>{t['sigg_cd']}</span>
+</div>
+<div class='of-parcel-row'>
+  <span class='of-k'>umdNm (법정동)</span>
+  <span class='of-v'>{t['umd_name']}</span>
+</div>
+<div class='of-parcel-row'>
+  <span class='of-k'>jibun (지번·원본 별표)</span>
+  <span class='of-v'>{jibun_str}</span>
+</div>
+<div class='of-parcel-row'>
+  <span class='of-k'>jimok (지목)</span>
+  <span class='of-v'>{t['jimok']}</span>
+</div>
+<div class='of-parcel-row'>
+  <span class='of-k'>dealArea (거래면적)</span>
+  <span class='of-v'>{t['area_m2']:,.0f}㎡</span>
+</div>
+<div class='of-parcel-row'>
+  <span class='of-k'>dealAmount (거래금액)</span>
+  <span class='of-v of-v-big'>{_fmt_amt(t['deal_amount'])}</span>
+</div>
+<div class='of-parcel-row'>
+  <span class='of-k'>dealYear/Month/Day</span>
+  <span class='of-v'>{t['deal_year']} / {t['deal_month']} / {t['deal_day']}</span>
+</div>
+<div class='of-parcel-row'>
+  <span class='of-k'>landUse (용도지역)</span>
+  <span class='of-v'>{t['land_use'] or '—'}</span>
+</div>
+<div class='of-parcel-row'>
+  <span class='of-k'>dealingGbn (거래유형)</span>
+  <span class='of-v'>{t['dealing_gbn'] or '—'}</span>
+</div>
+""")
 
-        zone_text = (sel_parcel2["zone_detail"]
-                     or sel_parcel2["zone_type"] or "—")
-        jiga_text = (f"{int(sel_parcel2['jiga']):,}원/㎡"
-                     if sel_parcel2["jiga"] else "—")
-
-        # ━━ 카드 1: 필지 + 거래 요약 ━━
+        # 카드 헤더 — 그 필지의 거래 총 N건
         st.markdown(f"""
 <div class='of-parcel-card'>
   <div class='of-parcel-head'>
-    <div class='of-parcel-jibun'>{sel_parcel2['jibun']}</div>
+    <div class='of-parcel-jibun'>📋 국토부 실거래 API</div>
     <div class='of-parcel-tags'>
-      <span class='of-tag'>{sel_parcel2['jimok']}</span>
-      <span class='of-tag'>{int(sel_parcel2['area_m2']):,}㎡ · {py:,.0f}평</span>
+      <span class='of-tag'>PNU `{pnu[:11]}…`</span>
+      <span class='of-tag'>총 {len(sel_trades2)}건</span>
     </div>
   </div>
-  <div class='of-parcel-addr'>{addr}</div>
-  <div class='of-parcel-section'>최근 실거래</div>
-  <div class='of-parcel-row'>
-    <span class='of-k'>거래가</span><span class='of-v of-v-big'>{latest_amt}</span>
-  </div>
-  <div class='of-parcel-row'>
-    <span class='of-k'>평단가</span><span class='of-v'>{latest_unit}</span>
-  </div>
-  <div class='of-parcel-row'>
-    <span class='of-k'>거래일</span><span class='of-v'>{latest_date}</span>
-  </div>
-  <div class='of-parcel-row'>
-    <span class='of-k'>총 매칭</span><span class='of-v'>{len(sel_trades2)}건</span>
-  </div>
-  <div class='of-parcel-section'>입지·필지 속성</div>
-  <div class='of-parcel-row'>
-    <span class='of-k'>해발 · 경사</span>
-    <span class='of-v'>{f"{sel_parcel2['elevation_m']:.0f}m · {sel_parcel2['slope_deg']:.1f}°" if sel_parcel2['elevation_m'] is not None else "—"}</span>
-  </div>
-  <div class='of-parcel-row'>
-    <span class='of-k'>도로 접면</span><span class='of-v'>{access_label}</span>
-  </div>
-  <div class='of-parcel-row'>
-    <span class='of-k'>형상</span><span class='of-v'>{sel_parcel2['shape_type'] or '—'}</span>
-  </div>
-  <div class='of-parcel-row'>
-    <span class='of-k'>용도지역</span><span class='of-v'>{zone_text}</span>
-  </div>
-  <div class='of-parcel-row'>
-    <span class='of-k'>공시지가</span><span class='of-v'>{jiga_text}</span>
-  </div>
+  {''.join(trade_blocks)}
 </div>
 """, unsafe_allow_html=True)
-
-        # 카드 2 (거래 이력 리스트)는 사용자 요청으로 제거됨
 
     # dialog는 col_table 안 표 다음으로 이동 (아래 with col_table: 안에서 호출)
 
