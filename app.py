@@ -1253,7 +1253,52 @@ div[data-testid="stStatusWidget"] { display: none !important; }
 /* body/html 자체 viewport 고정 (스크롤 제거) */
 body, html { overflow: hidden !important; height: 100vh !important; }
 
-/* @st.dialog 모달 — 우리 fixed elements보다 위로, 가운데 정렬 */
+/* 자체 dialog floating overlay — @st.dialog 대신 */
+.of-dialog-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 780px;
+  max-width: calc(100vw - 40px);
+  max-height: 85vh;
+  overflow-y: auto;
+  z-index: 99999;
+  background: white;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.30),
+              0 2px 6px rgba(15, 23, 42, 0.08);
+  padding: 22px 26px;
+}
+.of-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 99998;
+}
+.of-dialog-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.08);
+  color: #475569;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.of-dialog-close:hover { background: #dc2626; color: white; }
+
+/* @st.dialog 모달 (혹시 사용 시) — 우리 fixed elements보다 위로, 가운데 정렬 */
 div[role="dialog"],
 div[data-testid="stDialog"],
 div[data-testid="stModal"] {
@@ -1905,6 +1950,82 @@ components.html("""
     }
   }
 
+  function applyOwnDialog() {
+    // 자체 dialog: of-dialog-start / of-dialog-end marker 사이 element들을 wrap
+    var start = doc.getElementById('of-dialog-start');
+    var end = doc.getElementById('of-dialog-end');
+    if (!start || !end) {
+      // marker 없으면 기존 dialog/backdrop 제거
+      var existing = doc.querySelector('.of-dialog-overlay');
+      if (existing) existing.remove();
+      var bd = doc.querySelector('.of-dialog-backdrop');
+      if (bd) bd.remove();
+      return;
+    }
+    function ecParent(el) {
+      var p = el.parentElement;
+      while (p && !(p.classList && p.classList.contains('element-container'))) {
+        p = p.parentElement;
+        if (!p || p === doc.body) return null;
+      }
+      return p;
+    }
+    var startEc = ecParent(start);
+    var endEc = ecParent(end);
+    if (!startEc || !endEc) return;
+    if (startEc.previousElementSibling
+        && startEc.previousElementSibling.classList.contains('of-dialog-overlay')) {
+      var wrapper = startEc.previousElementSibling;
+      var node = startEc.nextElementSibling;
+      while (node && node !== endEc) {
+        var next = node.nextElementSibling;
+        // dialog 안 element-container 강제 static
+        node.style.position = 'static';
+        node.style.height = 'auto';
+        node.style.minHeight = '0';
+        node.style.width = 'auto';
+        wrapper.appendChild(node);
+        node = next;
+      }
+      return;
+    }
+    // 새 wrapper + backdrop 생성
+    var backdrop = doc.createElement('div');
+    backdrop.className = 'of-dialog-backdrop';
+    backdrop.onclick = function() { closeDialog(); };
+    doc.body.appendChild(backdrop);
+
+    var wrapper = doc.createElement('div');
+    wrapper.className = 'of-dialog-overlay';
+    var closeBtn = doc.createElement('button');
+    closeBtn.className = 'of-dialog-close';
+    closeBtn.innerHTML = '✕';
+    closeBtn.onclick = function() { closeDialog(); };
+    wrapper.appendChild(closeBtn);
+
+    var parent = startEc.parentNode;
+    parent.insertBefore(wrapper, startEc);
+    var node = startEc.nextElementSibling;
+    while (node && node !== endEc) {
+      var next = node.nextElementSibling;
+      node.style.position = 'static';
+      node.style.height = 'auto';
+      node.style.minHeight = '0';
+      node.style.width = 'auto';
+      wrapper.appendChild(node);
+      node = next;
+    }
+    startEc.style.display = 'none';
+    endEc.style.display = 'none';
+
+    function closeDialog() {
+      // streamlit session_state 직접 못 건드림 → URL query 또는 click event 사용 안 됨
+      // 우리 자체로 DOM에서 hide. 사용자가 새 row 클릭 시 다시 그려짐
+      wrapper.style.display = 'none';
+      backdrop.style.display = 'none';
+    }
+  }
+
   function applyDialogFix() {
     // streamlit @st.dialog 다양한 selector 시도
     var dialogs = doc.querySelectorAll(
@@ -1955,6 +2076,7 @@ components.html("""
     try { applyNarrowWidth(); } catch(e) {}
     try { applySearchFloat(); } catch(e) {}
     try { applyFullscreenMap(); } catch(e) {}
+    try { applyOwnDialog(); } catch(e) {}
     try { applyDialogFix(); } catch(e) {}
     // 디버그 표시
     var nForms = doc.querySelectorAll('form').length;
@@ -2281,8 +2403,8 @@ if "result" in st.session_state:
     # 이전 rerun에서 결정된 selected_pnu (지도·표 그리기에 사용)
     prev_selected_pnu = st.session_state.get("selected_pnu")
 
-    # 선택된 PNU의 거래 상세를 dialog(팝업)로 표시
-    @st.dialog("📄 선택 필지 · 실거래 상세", width="large")
+    # 선택된 PNU의 거래 상세 — @st.dialog 대신 우리 자체 floating overlay
+    # (streamlit 1.57 @st.dialog가 우리 fixed CSS와 충돌하여 안 뜸)
     def show_parcel_dialog(pnu):
         sel_conn2 = get_conn()
         sel_parcel2 = sel_conn2.execute(
@@ -2604,11 +2726,12 @@ if "result" in st.session_state:
                             unsafe_allow_html=True,
                         )
 
-    # PNU 변경된 직후에만 dialog open (한 번만 트리거 → 사용자가 ✕로 닫을 수 있음)
-    if prev_selected_pnu and \
-            st.session_state.get("_dialog_shown_for") != prev_selected_pnu:
-        st.session_state._dialog_shown_for = prev_selected_pnu
+    # PNU 변경된 직후에만 dialog open — 직접 floating overlay
+    if prev_selected_pnu:
+        # 닫기 버튼 클릭 시 selected_pnu = None
+        st.markdown('<div id="of-dialog-start"></div>', unsafe_allow_html=True)
         show_parcel_dialog(prev_selected_pnu)
+        st.markdown('<div id="of-dialog-end"></div>', unsafe_allow_html=True)
 
     # 시안 4: 지도가 main 전체. 표는 우측 드로어(of-drawer-container)로 빠짐.
     # 비율은 [1, 0.01] 정도로 col_table 거의 없앰 — JS가 fixed로 빼냄.
