@@ -1500,6 +1500,37 @@ components.html("""
     });
   }
 
+  function applyFullscreenMap() {
+    // 지도 iframe (height=540으로 호출됨)을 100vh로 강제
+    var nMaps = 0;
+    doc.querySelectorAll('iframe').forEach(function(f) {
+      var h = parseInt(f.getAttribute('height') || '0');
+      var src = (f.src || '') + (f.title || '');
+      var isMap = (h === 540) || (src.indexOf('naver') >= 0)
+        || (src.indexOf('540') >= 0);
+      if (isMap) {
+        f.style.height = '100vh';
+        f.style.minHeight = '100vh';
+        f.style.width = '100%';
+        f.style.display = 'block';
+        nMaps++;
+        // 부모 element-container까지 100vh 강제
+        var p = f.parentElement;
+        var depth = 0;
+        while (p && p !== doc.body && depth < 4) {
+          p.style.height = '100vh';
+          p.style.minHeight = '100vh';
+          p.style.maxHeight = '100vh';
+          p.style.margin = '0';
+          p.style.padding = '0';
+          p = p.parentElement;
+          depth++;
+        }
+      }
+    });
+    window._ofDbgMap = nMaps;
+  }
+
   function applySearchFloat() {
     var form = doc.querySelector('form[data-testid="stForm"]')
       || doc.querySelector('div[data-testid="stForm"]')
@@ -1527,6 +1558,7 @@ components.html("""
     try { applySummaryOverlay(); } catch(e) {}
     try { applyNarrowWidth(); } catch(e) {}
     try { applySearchFloat(); } catch(e) {}
+    try { applyFullscreenMap(); } catch(e) {}
     // 디버그 표시
     var nForms = doc.querySelectorAll('form').length;
     var nExp = doc.querySelectorAll('[data-testid="stExpander"]').length;
@@ -1537,6 +1569,7 @@ components.html("""
     dbg('JS OK · form ' + nForms + ' · expander ' + nExp
       + ' · iframe ' + nIframe + '<br>float ' + float
       + ' · overlay ' + overlay + ' · drawer ' + drawer
+      + '<br>map iframe 100vh: ' + (window._ofDbgMap || 0)
       + '<br>form찾기: ' + (window._ofDbgForm || '?'));
   }
   applyAll();
