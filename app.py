@@ -1253,6 +1253,34 @@ div[data-testid="stStatusWidget"] { display: none !important; }
 /* body/html 자체 viewport 고정 (스크롤 제거) */
 body, html { overflow: hidden !important; height: 100vh !important; }
 
+/* streamlit 에러 메시지 — fixed 강제 visible (우리 CSS가 가리는 것 방지) */
+[data-testid="stException"],
+[data-testid="stAlert"],
+[role="alert"],
+div[data-testid="stMarkdownContainer"]:has([data-testid="stException"]) {
+  position: fixed !important;
+  top: 280px !important;
+  left: 10px !important;
+  right: 10px !important;
+  max-width: 800px !important;
+  margin: 0 auto !important;
+  z-index: 999999 !important;
+  background: #fef2f2 !important;
+  color: #7f1d1d !important;
+  padding: 16px 20px !important;
+  border: 2px solid #dc2626 !important;
+  border-radius: 8px !important;
+  visibility: visible !important;
+  display: block !important;
+  font-family: monospace !important;
+  font-size: 12px !important;
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+  max-height: 60vh !important;
+  overflow-y: auto !important;
+  box-shadow: 0 10px 30px rgba(220, 38, 38, 0.3) !important;
+}
+
 /* 자체 dialog floating overlay — @st.dialog 대신 */
 .of-dialog-overlay {
   position: fixed;
