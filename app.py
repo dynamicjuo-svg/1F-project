@@ -2344,7 +2344,7 @@ if "result" in st.session_state:
             "그 외 지역은 무시되었습니다."
         )
 
-    # 결과 카드 렌더링은 함수로 추출 — col_table 안에서 호출 (거래목록 위쪽)
+    # 결과 카드 렌더링 (검색창 아래 main page 흐름)
     def render_summary_cards():
         # GPT 스타일 응답 카드
         sentence, chips = format_cond_as_sentence(cond, result)
@@ -2420,6 +2420,9 @@ if "result" in st.session_state:
             )
         else:
             cols[2].metric("평단가 평균", "—")
+
+    # main 흐름에 결과 카드 표시 (원위치)
+    render_summary_cards()
 
     if not results:
         st.warning("조건에 맞는 거래가 없어요. 다른 표현으로 시도해보세요.")
@@ -2751,25 +2754,7 @@ if "result" in st.session_state:
                             unsafe_allow_html=True,
                         )
 
-    # PNU 변경된 직후에만 dialog open — 직접 floating overlay
-    # 진단 박스 (항상 표시 — 클릭 시 selected_pnu 변경 추적)
-    _dbg_sel = prev_selected_pnu or "(없음)"
-    st.markdown(
-        f'<div style="position:fixed;top:160px;left:10px;background:#16a34a;'
-        f'color:white;padding:6px 10px;z-index:99999;font-size:11px;'
-        f'font-family:monospace;border-radius:6px;">'
-        f'SELECTED PNU: {_dbg_sel}</div>',
-        unsafe_allow_html=True,
-    )
-    if prev_selected_pnu:
-        try:
-            show_parcel_dialog(prev_selected_pnu)
-        except Exception as _dlg_err:
-            import traceback
-            st.error(
-                f"dialog 에러: {type(_dlg_err).__name__}: {_dlg_err}\n\n"
-                f"```\n{traceback.format_exc()}\n```"
-            )
+    # dialog는 col_table 안 표 다음으로 이동 (아래 with col_table: 안에서 호출)
 
     # 시안 4: 지도가 main 전체. 표는 우측 드로어(of-drawer-container)로 빠짐.
     # 비율은 [1, 0.01] 정도로 col_table 거의 없앰 — JS가 fixed로 빼냄.
@@ -2981,9 +2966,6 @@ if "result" in st.session_state:
             '<div id="of-tbl-anchor" style="height:1px;"></div>',
             unsafe_allow_html=True,
         )
-        # 결과 카드(GPT + 시세 요약)를 거래목록 위쪽에 표시
-        render_summary_cards()
-        st.divider()
         st.subheader("📋 거래 목록")
         # 시군구 라벨 매핑
         SIGG_LABEL = {"41461": "처인", "41463": "기흥", "41465": "수지"}
@@ -3093,6 +3075,24 @@ if "result" in st.session_state:
             st.caption(
                 f"※ 표에는 최대 500건만. 전체 {len(results):,}건은 엑셀로."
             )
+
+        # 표 아래에 선택된 필지의 dialog 내용 inline 표시
+        if prev_selected_pnu:
+            st.divider()
+            st.markdown(
+                f"<div style='font-family:\"Archivo Black\",sans-serif;"
+                f"font-size:13px;color:{BRAND_RED};letter-spacing:0.06em;"
+                f"margin-bottom:8px;'>📄 선택 필지 · 실거래 상세</div>",
+                unsafe_allow_html=True,
+            )
+            try:
+                show_parcel_dialog(prev_selected_pnu)
+            except Exception as _dlg_err:
+                import traceback
+                st.error(
+                    f"상세 정보 로딩 에러: {type(_dlg_err).__name__}: {_dlg_err}\n\n"
+                    f"```\n{traceback.format_exc()}\n```"
+                )
 
     # 표 행 클릭 → PNU 동기화 (양방향)
     if isinstance(table_event, dict) and table_event.get("type") == "row_click":
