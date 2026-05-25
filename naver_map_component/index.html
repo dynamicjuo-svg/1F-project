@@ -82,9 +82,7 @@ let _cadastralLayer = null;
 function loadSDK(clientId, cb) {
   if (_sdkLoaded) { cb(); return; }
   const s = document.createElement("script");
-  // CadastralLayer(지적편집도)는 submodules=cadastral 필요
-  s.src = "https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId="
-    + clientId + "&submodules=cadastral";
+  s.src = "https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=" + clientId;
   s.onload = function() { _sdkLoaded = true; cb(); };
   s.onerror = function() {
     document.getElementById("map").innerHTML =
@@ -275,9 +273,21 @@ function renderMap(args) {
   window._ofUpdateVisibility = updateVisibility;
   updateVisibility();
 
-  // CadastralLayer + 토글 버튼 + 줌 이벤트 + 디버그 패널 (한 번만)
+  // 지적편집도 — V-World WMTS 타일을 NAVER 맵에 ImageMapType으로 오버레이
+  // (네이버 CadastralLayer는 NCP 유료 옵션이라 V-World 무료 타일로 대체)
   if (!_cadastralLayer) {
-    _cadastralLayer = new naver.maps.CadastralLayer();
+    _cadastralLayer = new naver.maps.ImageMapType({
+      name: '지적편집도',
+      tileSize: new naver.maps.Size(256, 256),
+      minZoom: 6, maxZoom: 19, opacity: 0.65,
+      getTileUrl: function(tile, z) {
+        // V-World 무료 공개 키로 지적편집도 WMTS 호출 (Hybrid는 도로/지번 통합)
+        // ko 지적편집도 단독 = el_lp_pa_cbnd_bubun 아니고 'Hybrid' 안 지번 포함
+        return 'https://api.vworld.kr/req/wmts/1.0.0/'
+          + '5B45757F-FF60-3E33-9BA2-2DAFB48BBD58/Hybrid/'
+          + z + '/' + tile.y + '/' + tile.x + '.png';
+      },
+    });
     _cadastralLayer.setMap(map);
     const cadBtn = document.createElement('button');
     const cadHint = document.createElement('div');
