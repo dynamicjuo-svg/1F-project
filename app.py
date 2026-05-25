@@ -2788,45 +2788,7 @@ if "result" in st.session_state:
 </div>
 """, unsafe_allow_html=True)
 
-        # ━━ 카드 2: 거래 이력 (간단 리스트) ━━
-        if not sel_trades2:
-            return
-        CONF_COLOR = {"high": "#16a34a", "mid": "#ca8a04", "low": "#dc2626"}
-        CONF_LABEL = {"high": "확정", "mid": "중간", "low": "낮음"}
-        rows_html = []
-        for t in sel_trades2:
-            conf = t["match_confidence"] or "—"
-            color = CONF_COLOR.get(conf, "#64748b")
-            conf_label = CONF_LABEL.get(conf, conf)
-            anomaly = ""
-            if t["price_anomaly"] == "high_outlier":
-                anomaly = " 🔥"
-            elif t["price_anomaly"] == "low_outlier":
-                anomaly = " ❄️"
-            unit_str = (f"{int(t['unit_per_pyeong']):,}만/평"
-                        if t["unit_per_pyeong"] else "—")
-            rows_html.append(f"""
-<div class='of-trade-row'>
-  <div class='of-trade-top'>
-    <span class='of-trade-date'>{t['deal_ymd'][:10]}{anomaly}</span>
-    <span class='of-trade-conf' style='background:{color};'>{conf_label}</span>
-  </div>
-  <div class='of-trade-mid'>
-    <span class='of-trade-amt'>{_fmt_amt(t['deal_amount'])}</span>
-    <span class='of-trade-unit'>{unit_str}</span>
-  </div>
-  <div class='of-trade-bot'>
-    {int(t['area_m2']):,}㎡ · 별표 {t['jibun_masked'] or '?'}
-    {' · 산' if t['is_san'] else ''}
-    {' · ' + t['land_use'] if t.get('land_use') else ''}
-  </div>
-</div>
-""")
-        st.markdown(
-            f"<div class='of-trade-list-title'>📋 국토부 실거래 ({len(sel_trades2)}건)</div>"
-            + "".join(rows_html),
-            unsafe_allow_html=True,
-        )
+        # 카드 2 (거래 이력 리스트)는 사용자 요청으로 제거됨
 
     # dialog는 col_table 안 표 다음으로 이동 (아래 with col_table: 안에서 호출)
 
