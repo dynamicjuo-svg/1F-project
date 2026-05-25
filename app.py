@@ -1904,6 +1904,35 @@ div[role="dialog"] iframe {
   color: #64748b;
 }
 
+/* 사용설명서 다운로드 버튼 — 우상단 fixed */
+.of-guide-wrap {
+  position: fixed !important;
+  top: 22px;
+  right: 14px;
+  z-index: 160;
+  width: auto !important;
+}
+.of-guide-wrap div.stDownloadButton button {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #475569 !important;
+  border: 1px solid rgba(15, 23, 42, 0.10) !important;
+  border-radius: 999px !important;
+  padding: 8px 14px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  font-family: 'Pretendard', sans-serif !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.10) !important;
+  backdrop-filter: blur(10px);
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease !important;
+  height: 36px !important;
+}
+.of-guide-wrap div.stDownloadButton button:hover {
+  background: #dc2626 !important;
+  color: white !important;
+  border-color: #dc2626 !important;
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.30) !important;
+}
+
 /* 지목 색 범례 — 지도 우측 하단 fixed */
 .of-legend {
   position: fixed;
@@ -2518,6 +2547,25 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+# 사용 설명서 다운로드 버튼 (우상단 fixed)
+_guide_path = os.path.join(HERE, "mockups", "user_guide.html")
+if os.path.exists(_guide_path):
+    try:
+        with open(_guide_path, encoding="utf-8") as _f:
+            _guide_html = _f.read()
+        st.markdown('<div class="of-guide-wrap">', unsafe_allow_html=True)
+        st.download_button(
+            "📖 사용설명서",
+            data=_guide_html,
+            file_name="OneFamily_사용설명서.html",
+            mime="text/html",
+            key="of_guide_dl",
+            help="자연어 검색 예시 + 화면 인터랙션 설명 한 장",
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+    except Exception:
+        pass
 
 # 검색창 — 입력창 안에 작은 🔍 아이콘 (form submit 버튼을 absolute로 input 위에 오버레이)
 # 폭은 좁게 (max-width: 520px)
