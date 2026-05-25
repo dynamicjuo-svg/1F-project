@@ -1047,9 +1047,15 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   margin-left: auto; font-family: 'Archivo Black', monospace;
   font-size: 10px; color: #6a6a6a; letter-spacing: 0.08em;
 }
-/* 검색창 폭 + 매물검증 expander 폭 — 화면 가운데 가까이 좁게 */
-.of-narrow-wrap {
-  max-width: 520px; margin: 8px 0 10px 0;
+/* 검색창 폭 + 매물검증 expander 폭 — 좁게 */
+.of-narrow-wrap { max-width: 520px; margin: 8px 0 10px 0; }
+/* 검색 form 자체에 직접 폭 적용 — streamlit element-container가 흐름 막아서 */
+section.main form[data-testid="stForm"] {
+  max-width: 520px !important;
+}
+/* 매물 교차 검증 expander도 직접 폭 적용 */
+section.main div[data-testid="stExpander"]:has(summary:not(:empty)) {
+  max-width: 520px !important;
 }
 /* 검색 input 내부에 아이콘 — input wrapper에 relative position 부여 */
 .of-search-icon-form > div { position: relative !important; }
@@ -1081,6 +1087,38 @@ button[data-testid="stSidebarCollapseButton"] { display: none !important; }
 button[data-testid="collapsedControl"] { display: none !important; }
 button[kind="header"] { display: none !important; }
 div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
+
+/* 결과 영역(GPT 카드 + 시세 요약 + 평단가 caption) — 지도 위 좌측 floating */
+.of-summary-overlay {
+  position: fixed;
+  left: 14px;
+  top: 220px;
+  width: 380px;
+  max-height: calc(100vh - 240px);
+  overflow-y: auto;
+  z-index: 100;
+  background: rgba(254, 249, 195, 0.95);
+  border: 3px solid #0a0a0a;
+  box-shadow: 5px 5px 0 #dc2626;
+  padding: 12px 14px;
+  backdrop-filter: blur(3px);
+}
+.of-summary-overlay > .element-container { width: 100% !important; }
+.of-summary-overlay div[data-testid="stMetric"] {
+  padding: 6px 8px !important;
+  border: 2px solid #0a0a0a !important;
+  background: white !important;
+  margin: 4px 0 !important;
+}
+.of-summary-overlay div[data-testid="stMetricValue"] { font-size: 16px !important; }
+.of-summary-overlay div[data-testid="stMetricLabel"] { font-size: 10px !important; }
+.of-summary-overlay .of-gpt-card {
+  padding: 10px 12px !important; margin: 0 0 10px 0 !important;
+  font-size: 12.5px !important; box-shadow: 4px 4px 0 #dc2626 !important;
+}
+.of-summary-overlay h2, .of-summary-overlay h3 {
+  font-size: 14px !important; margin: 8px 0 4px 0 !important;
+}
 
 /* PC (>=769px) — 시안 4 풀스크린 컨셉 */
 @media (min-width: 769px) {
@@ -1180,7 +1218,7 @@ div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
 </style>
 
 <script>
-// col_table을 자동으로 fixed drawer로 변환 (페이지 로드 + 폴링)
+// col_table → fixed drawer  +  결과 영역(GPT/시세) → 좌측 floating overlay
 (function() {
   function applyDrawer() {
     var t = document.getElementById('of-tbl-anchor');
@@ -1197,8 +1235,56 @@ div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
       window._ofDrawerCol = col;
     }
   }
-  applyDrawer();
-  setInterval(applyDrawer, 500);
+
+  function applySummaryOverlay() {
+    var start = document.getElementById('of-summary-start');
+    var end = document.getElementById('of-summary-end');
+    if (!start || !end) return;
+    // marker의 element-container 부모 찾기
+    function ecParent(el) {
+      var p = el.parentElement;
+      while (p && !(p.classList && p.classList.contains('element-container'))) {
+        p = p.parentElement;
+        if (!p || p === document.body) return null;
+      }
+      return p;
+    }
+    var startEc = ecParent(start);
+    var endEc = ecParent(end);
+    if (!startEc || !endEc) return;
+    if (startEc.previousElementSibling
+        && startEc.previousElementSibling.classList.contains('of-summary-overlay')) {
+      // 이미 wrap됨 — 마커 사이 element를 wrapper로 옮기기만
+      var wrapper = startEc.previousElementSibling;
+      var node = startEc.nextElementSibling;
+      while (node && node !== endEc) {
+        var next = node.nextElementSibling;
+        wrapper.appendChild(node);
+        node = next;
+      }
+      return;
+    }
+    var wrapper = document.createElement('div');
+    wrapper.className = 'of-summary-overlay';
+    var parent = startEc.parentNode;
+    parent.insertBefore(wrapper, startEc);
+    var node = startEc.nextElementSibling;
+    while (node && node !== endEc) {
+      var next = node.nextElementSibling;
+      wrapper.appendChild(node);
+      node = next;
+    }
+    // marker 자체는 숨김
+    startEc.style.display = 'none';
+    endEc.style.display = 'none';
+  }
+
+  function applyAll() {
+    try { applyDrawer(); } catch(e) {}
+    try { applySummaryOverlay(); } catch(e) {}
+  }
+  applyAll();
+  setInterval(applyAll, 500);
 })();
 </script>
 
@@ -1419,6 +1505,9 @@ if "result" in st.session_state:
             "그 외 지역은 무시되었습니다."
         )
 
+    # 결과 영역 시작 marker (JS로 wrapping하여 좌측 floating overlay로)
+    st.markdown('<div id="of-summary-start"></div>', unsafe_allow_html=True)
+
     # GPT 스타일 응답 카드 — 검색 의도 자연어 풀이 + 항목 칩
     sentence, chips = format_cond_as_sentence(cond, result)
     chip_html = "".join(
@@ -1501,6 +1590,8 @@ if "result" in st.session_state:
     else:
         cols[2].metric("평단가 평균", "—")
 
+    # 결과 영역 끝 marker
+    st.markdown('<div id="of-summary-end"></div>', unsafe_allow_html=True)
     st.divider()
 
     # 이전 rerun에서 결정된 selected_pnu (지도·표 그리기에 사용)
