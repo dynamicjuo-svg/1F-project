@@ -901,48 +901,51 @@ st.markdown(f"""
     font-size: 10px; color: #6a6a6a; letter-spacing: 0.08em;
     margin-bottom: 18px;
   }}
-  /* GPT 응답 카드 — 검정 BG + 노란 텍스트 + 빨강 그림자 */
+  /* GPT 응답 카드 — 모던 흰 BG + 빨강 좌측 액센트 */
   .of-gpt-card {{
-    background: {BRAND_NAVY}; color: {BRAND_NAVY_LIGHT};
-    border: 3px solid {BRAND_NAVY};
-    box-shadow: 8px 8px 0 {BRAND_RED};
-    padding: 22px 26px; margin: 18px 0 26px 0;
-    font-size: 15px; line-height: 1.6;
+    background: white;
+    color: #0f172a;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-left: 4px solid {BRAND_RED};
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+    padding: 14px 18px; margin: 0 0 14px 0;
+    font-size: 13.5px; line-height: 1.55;
+    border-radius: 12px;
+    max-width: 460px;
   }}
   .of-gpt-card .of-gpt-icon {{
     display: inline-flex; align-items: center; justify-content: center;
-    width: 30px; height: 30px; background: {BRAND_RED}; color: white;
-    border: 2px solid {BRAND_NAVY_LIGHT};
-    font-family: 'Archivo Black'; font-size: 12px;
-    margin-right: 10px; vertical-align: middle;
+    width: 22px; height: 22px; background: {BRAND_RED}; color: white;
+    border-radius: 5px;
+    font-family: 'Archivo Black'; font-size: 10px;
+    margin-right: 8px; vertical-align: middle;
   }}
   .of-gpt-card .of-gpt-title {{
-    font-family: 'Archivo Black', sans-serif; color: {BRAND_YELLOW};
-    font-size: 11px; letter-spacing: 0.1em;
-    margin-bottom: 10px; display: flex; align-items: center;
+    font-family: 'Archivo Black', sans-serif; color: {BRAND_RED};
+    font-size: 11.5px; letter-spacing: 0.06em;
+    margin-bottom: 8px; display: flex; align-items: center;
   }}
-  .of-gpt-card b {{ color: {BRAND_YELLOW}; font-weight: 800; }}
-  /* 메트릭 카드 — Brutalist */
+  .of-gpt-card b {{ color: {BRAND_RED}; font-weight: 700; }}
+  /* 메트릭 카드 — 모던 */
   div[data-testid="stMetric"] {{
-    background: white; padding: 18px 20px;
-    border: 3px solid {BRAND_NAVY}; box-shadow: 5px 5px 0 {BRAND_NAVY};
-    border-radius: 0;
+    background: white; padding: 10px 14px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    border-radius: 10px;
     transition: all 0.12s ease;
   }}
   div[data-testid="stMetric"]:hover {{
-    transform: translate(-2px, -2px);
-    box-shadow: 7px 7px 0 {BRAND_NAVY};
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
   }}
   div[data-testid="stMetric"] > div:first-child label {{
-    font-family: 'Archivo Black', sans-serif !important;
-    font-size: 10px !important; color: {BRAND_NAVY} !important;
-    letter-spacing: 0.08em !important;
-    text-transform: uppercase;
+    font-size: 11px !important; color: #64748b !important;
+    letter-spacing: 0.02em !important;
+    font-weight: 500 !important;
   }}
   div[data-testid="stMetric"] [data-testid="stMetricValue"] {{
-    font-family: 'Archivo Black', 'Pretendard', sans-serif;
-    color: {BRAND_NAVY}; font-weight: 900; font-size: 36px;
-    letter-spacing: -0.03em;
+    font-family: 'Pretendard', sans-serif;
+    color: #0f172a; font-weight: 700; font-size: 20px;
+    letter-spacing: -0.02em;
   }}
   /* primary 버튼 */
   div.stButton > button[kind="primary"] {{
