@@ -1043,8 +1043,75 @@ st.markdown(f"""
 # 반응형 CSS는 별도 markdown 호출 (f-string 아님 — 중괄호 이스케이프 안 필요)
 st.markdown("""
 <style>
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/*  시안 4 (PC, ≥769px): 지도 풀스크린 + 사이드바 floating overlay  */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media (min-width: 769px) {
+  /* main 영역은 viewport 전체 차지 (사이드바 자리 margin 안 줌) */
+  section.main > div.block-container {
+    padding-top: 12px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    padding-bottom: 0 !important;
+    max-width: 100% !important;
+  }
+  section[data-testid="stSidebar"] > div:first-child {
+    background: rgba(254, 243, 199, 0.97) !important;
+    backdrop-filter: blur(4px);
+    border-right: 3px solid #0a0a0a !important;
+    box-shadow: 5px 0 0 #dc2626;
+    width: 380px !important;
+  }
+  /* 슬림 헤더 — 한 줄로 압축 */
+  .of-brand-slim {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 4px 0 6px 0 !important;
+    border-bottom: 2px solid #0a0a0a;
+    margin-bottom: 10px !important;
+  }
+  .of-brand-slim .of-logo-box {
+    font-size: 16px !important;
+    padding: 4px 8px !important;
+  }
+  .of-brand-slim .of-logo {
+    font-size: 22px !important;
+  }
+  .of-brand-slim .of-badge {
+    font-size: 9px !important;
+    padding: 3px 7px !important;
+  }
+  .of-version-inline {
+    margin-left: auto;
+    font-family: 'Archivo Black', monospace;
+    font-size: 10px;
+    color: #6a6a6a;
+    letter-spacing: 0.08em;
+  }
+  /* 결과 영역 — 지도가 크게 보이도록 */
+  /* col_map의 지도 iframe 키우기 */
+  div[data-testid="column"] iframe[height="540"] {
+    height: calc(100vh - 200px) !important;
+    min-height: 540px;
+  }
+  /* 표 iframe도 같이 키워서 우측 영역 시원하게 */
+  div[data-testid="column"] iframe[height="490"] {
+    height: calc(100vh - 240px) !important;
+    min-height: 490px;
+  }
+  /* GPT 응답 카드 — PC에서 더 컴팩트하게 */
+  .of-gpt-card {
+    padding: 14px 18px !important;
+    margin: 10px 0 14px 0 !important;
+    font-size: 13.5px !important;
+  }
+  /* 시세 요약 metric 영역 컴팩트 */
+  h2, h3 { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
+  div[data-testid="stMetric"] { padding: 4px 8px !important; }
+}
+
 /* 검색창 + 아이콘 버튼 — PC/모바일 통일된 가로 배치 + 시각적 일체화 */
-/* 검색 row(stHorizontalBlock 안 첫 자식) 안 버튼은 입력창 높이에 맞춤 */
 div[data-testid="stHorizontalBlock"] div.stButton > button {
   height: 50px;
   min-width: 0;
@@ -1274,23 +1341,16 @@ with st.sidebar:
         if tbl_state is not None:
             st.caption(f"of_trades_table.selection: `{tbl_state}`")
 
-# Brutalist 헤더 — 빨간 로고 박스 + 큰 타이포 + 작은 버전·발행일
+# 시안 4: PC에서는 슬림한 상단 띠 (로고+배지+버전만), 모바일에서는 크게
 st.markdown(
     f"""
-    <div class="of-brand">
+    <div class="of-brand of-brand-slim">
       <div class="of-logo-box">OF</div>
       <div>
         <div class="of-logo">One<span class="of-logo-accent">Family</span> 실거래가</div>
       </div>
       <span class="of-badge">용인시 3개구 · 42개 읍·면·동</span>
-    </div>
-    <div class="of-brand-sub">자연어 한 줄로 토지 실거래를 분석합니다</div>
-    <div class="of-version">{APP_VERSION} · 발행 {APP_RELEASE_DATE}</div>
-    <div style="font-size:12.5px;color:#0a0a0a;margin-bottom:14px;line-height:1.7;font-weight:500;">
-      예시 · "원삼면 임야 평당 100 미만 최근 1년"
-      &nbsp;·&nbsp; "신갈동 대지 코너 매물"
-      &nbsp;·&nbsp; "동천동 접도 30m 이상"
-      &nbsp;·&nbsp; "두창리 957-5와 비슷한 조건"
+      <span class="of-version-inline">{APP_VERSION} · {APP_RELEASE_DATE}</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -1883,7 +1943,8 @@ if "result" in st.session_state:
         st.session_state._dialog_shown_for = prev_selected_pnu
         show_parcel_dialog(prev_selected_pnu)
 
-    col_map, col_table = st.columns([1, 1])
+    # 시안 4: 지도가 main의 거의 전체 차지. 표는 좁은 col + 우측 floating dialog
+    col_map, col_table = st.columns([2.4, 1])
 
     # ===== 지도 (네이버) =====
     with col_map:
