@@ -1025,52 +1025,42 @@ st.markdown(f"""
   /* 디바이더 */
   hr {{ border-top: 3px solid {BRAND_NAVY} !important; }}
 
-  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-  /*  반응형 — 모바일 (≤768px) 에서 헤더·검색창·매물검증 조정       */
-  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-  @media (max-width: 768px) {{
-    .of-logo {{ font-size: 26px !important; }}
-    .of-logo-box {{ font-size: 28px !important; padding: 6px 12px !important; }}
-    .of-brand {{ flex-wrap: wrap; gap: 10px !important; }}
-    .of-badge {{ font-size: 11px !important; padding: 4px 8px !important; }}
-    .of-brand-sub {{ font-size: 13px !important; }}
-    .stTextInput > div > div > input {{
-      font-size: 14px; padding: 12px 14px;
-      box-shadow: 3px 3px 0 {BRAND_NAVY};
-    }}
-    div.stButton > button {{
-      font-size: 14px !important; padding: 10px 12px !important;
-    }}
-    /* 검색 한 줄 → 세로 stack */
-    div[data-testid="column"] {{ flex: 0 0 100% !important; max-width: 100% !important; }}
-    /* dialog 본문 패딩 줄이기 */
-    div[role="dialog"] {{ padding: 12px !important; }}
-    /* metric 카드 패딩 축소 */
-    div[data-testid="stMetric"] {{ padding: 6px 8px !important; }}
-    div[data-testid="stMetricValue"] {{ font-size: 16px !important; }}
-    div[data-testid="stMetricLabel"] {{ font-size: 11px !important; }}
-    /* expander 헤더 폰트 */
-    div[data-testid="stExpander"] summary {{ font-size: 13px !important; }}
-    /* 사이드바는 모바일에서 자동 hide되지만, 열렸을 때 폭 90% */
-    section[data-testid="stSidebar"][aria-expanded="true"] {{ width: 92vw !important; }}
+  /* PC에서 검색 row 안 버튼은 입력창 높이에 맞춤 */
+  div[data-testid="stHorizontalBlock"] div.stButton > button {{
+    height: 52px;
+    white-space: nowrap;
   }}
 
-  /* PC (≥769px): 검색창과 버튼 가로 배치 + 버튼 폭 자동 */
-  @media (min-width: 769px) {{
-    div.stButton > button {{
-      white-space: nowrap;
-    }}
-    /* 검색 row 안 버튼은 입력창 높이에 맞춤 */
-    div[data-testid="stHorizontalBlock"] div.stButton > button {{
-      height: 52px;
-    }}
-  }}
   /* 글꼴 — 큰 타이틀에 Archivo Black */
   h1, h2, h3 {{
     font-family: 'Archivo Black', 'Pretendard', sans-serif !important;
     color: {BRAND_NAVY};
     letter-spacing: -0.02em;
   }}
+</style>
+""", unsafe_allow_html=True)
+
+# 반응형 CSS는 별도 markdown 호출 (f-string 아님 — 중괄호 이스케이프 안 필요)
+st.markdown("""
+<style>
+@media (max-width: 768px) {
+  .of-logo { font-size: 26px !important; }
+  .of-logo-box { font-size: 22px !important; padding: 6px 10px !important; }
+  .of-brand { flex-wrap: wrap; gap: 8px !important; }
+  .of-badge { font-size: 11px !important; padding: 3px 8px !important; }
+  .of-brand-sub { font-size: 12.5px !important; }
+  .stTextInput > div > div > input {
+    font-size: 14px !important;
+    padding: 12px 14px !important;
+  }
+  div.stButton > button {
+    font-size: 14px !important;
+    padding: 10px 12px !important;
+    height: auto !important;
+  }
+  div[data-testid="stMetricValue"] { font-size: 17px !important; }
+  div[data-testid="stMetricLabel"] { font-size: 11px !important; }
+}
 </style>
 """, unsafe_allow_html=True)
 
