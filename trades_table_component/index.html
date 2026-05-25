@@ -78,6 +78,15 @@
   .empty {
     padding: 30px; text-align: center; color: #94a3b8; font-size: 13px;
   }
+  /* 모바일 (≤768px): 핵심 4컬럼만 보이고 가로 스크롤 없음 */
+  /*    표시: 구·동리(합), 지번, 면적(평), 금액(만원), 시기 */
+  /*    숨김: 거리, 지목, 면적(㎡), 평단가, PNU, 신뢰도, 그룹, 이상치 */
+  @media (max-width: 768px) {
+    table { font-size: 12px; }
+    thead th, tbody td { padding: 6px 6px; }
+    thead th.mobile-hide, tbody td.mobile-hide { display: none; }
+    .conf-pill, .group-pill { font-size: 9.5px; padding: 0 5px; }
+  }
 </style>
 </head>
 <body>
@@ -204,12 +213,21 @@ function render() {
     return;
   }
 
+  // 모바일에서 숨길 컬럼 — 핵심 4컬럼만 보이게 (지번/면적평/금액/시기)
+  const MOBILE_VISIBLE = new Set([
+    "지번", "면적(평)", "금액(만원)", "시기",
+  ]);
+  function isMobileHidden(colName) {
+    return !MOBILE_VISIBLE.has(colName);
+  }
+
   // 헤더
   const trH = document.createElement("tr");
   _columns.forEach(function(col) {
     const th = document.createElement("th");
     th.textContent = col.name;
     if (isNumericCol(col)) th.style.textAlign = "right";
+    if (isMobileHidden(col.name)) th.classList.add("mobile-hide");
     const arrow = document.createElement("span");
     arrow.className = "arrow";
     if (_sortCol === col.name) {
@@ -245,7 +263,10 @@ function render() {
     }
     _columns.forEach(function(col) {
       const td = document.createElement("td");
-      if (isNumericCol(col)) td.className = "num";
+      const classes = [];
+      if (isNumericCol(col)) classes.push("num");
+      if (isMobileHidden(col.name)) classes.push("mobile-hide");
+      if (classes.length) td.className = classes.join(" ");
       td.innerHTML = formatCell(row[col.name], col, row);
       tr.appendChild(td);
     });

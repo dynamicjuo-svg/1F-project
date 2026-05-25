@@ -1043,25 +1043,129 @@ st.markdown(f"""
 # 반응형 CSS는 별도 markdown 호출 (f-string 아님 — 중괄호 이스케이프 안 필요)
 st.markdown("""
 <style>
+/* 검색창 + 아이콘 버튼 — PC/모바일 통일된 가로 배치 + 시각적 일체화 */
+/* 검색 row(stHorizontalBlock 안 첫 자식) 안 버튼은 입력창 높이에 맞춤 */
+div[data-testid="stHorizontalBlock"] div.stButton > button {
+  height: 50px;
+  min-width: 0;
+  padding: 0 14px;
+  font-size: 18px;
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
-  .of-logo { font-size: 26px !important; }
-  .of-logo-box { font-size: 22px !important; padding: 6px 10px !important; }
+  .of-logo { font-size: 22px !important; }
+  .of-logo-box { font-size: 18px !important; padding: 5px 9px !important; }
   .of-brand { flex-wrap: wrap; gap: 8px !important; }
-  .of-badge { font-size: 11px !important; padding: 3px 8px !important; }
-  .of-brand-sub { font-size: 12.5px !important; }
+  .of-badge { font-size: 10px !important; padding: 3px 7px !important; }
+  .of-brand-sub { font-size: 12px !important; }
+  .of-version { font-size: 9px !important; }
+  /* 헤더 위 영역 줄이기 */
+  .block-container { padding-top: 1.5rem !important; padding-left: 0.5rem !important;
+                     padding-right: 0.5rem !important; }
   .stTextInput > div > div > input {
     font-size: 14px !important;
-    padding: 12px 14px !important;
+    padding: 11px 12px !important;
   }
   div.stButton > button {
     font-size: 14px !important;
     padding: 10px 12px !important;
-    height: auto !important;
+    height: 46px !important;
   }
-  div[data-testid="stMetricValue"] { font-size: 17px !important; }
-  div[data-testid="stMetricLabel"] { font-size: 11px !important; }
+  div[data-testid="stHorizontalBlock"] div.stButton > button {
+    height: 46px !important;
+    padding: 0 10px !important;
+    font-size: 16px !important;
+  }
+  div[data-testid="stMetricValue"] { font-size: 16px !important; }
+  div[data-testid="stMetricLabel"] { font-size: 10.5px !important; }
+  /* dialog 모바일에서 작게 + 지도 아래쯤에 뜨도록 */
+  div[role="dialog"] {
+    max-width: 92vw !important;
+    width: 92vw !important;
+    max-height: 60vh !important;
+    margin-top: 30vh !important;   /* 지도 위에서 30vh 밑으로 내려옴 */
+  }
+  div[role="dialog"] > div { padding: 10px 12px !important; }
+  /* 지도 iframe: 모바일에서 거의 풀스크린 (헤더+검색창 빼고 다) */
+  iframe[height="540"] { height: 72vh !important; min-height: 380px !important; }
+  /* 표 iframe: 모바일에선 처음에 숨김 (드로어 핸들로 슬라이드) */
+  iframe[height="490"] { height: 70vh !important; }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* 모바일 드로어 — 표 column을 오른쪽 슬라이드 (JS로 class 토글) */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media (max-width: 768px) {
+  .of-drawer-container {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    width: 92vw !important;
+    height: 100vh !important;
+    background: white !important;
+    z-index: 9000 !important;
+    border-left: 3px solid #0a0a0a !important;
+    box-shadow: -8px 0 16px rgba(0,0,0,0.18) !important;
+    transform: translateX(100%);
+    transition: transform 0.28s ease;
+    overflow-y: auto;
+    padding: 14px 12px;
+  }
+  .of-drawer-container.open {
+    transform: translateX(0);
+  }
+  /* 드로어 핸들 — 화면 오른쪽 가장자리에 세로 탭 */
+  #of-drawer-handle {
+    display: flex !important;
+  }
+}
+#of-drawer-handle {
+  display: none;
+  position: fixed;
+  top: 50%; right: 0;
+  transform: translateY(-50%);
+  background: #0a0a0a;
+  color: #fbbf24;
+  z-index: 9100;
+  padding: 14px 8px;
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  box-shadow: -3px 3px 0 rgba(0,0,0,0.3);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  user-select: none;
 }
 </style>
+
+<!-- 모바일 드로어 핸들 — 오른쪽 가장자리에 항상 떠 있음 -->
+<div id="of-drawer-handle" onclick="
+  const t = document.getElementById('of-tbl-anchor');
+  if (!t) return;
+  // 표 마커의 가장 가까운 column 찾기
+  let col = t.closest('[data-testid=\\'column\\']');
+  if (!col) col = t.parentElement;
+  while (col && !col.matches('[data-testid=column], [data-testid=stColumn]')) {
+    col = col.parentElement;
+  }
+  if (!col) return;
+  if (col.classList.contains('of-drawer-container')) {
+    if (col.classList.contains('open')) {
+      col.classList.remove('open');
+      this.innerText = '📋 거래목록';
+    } else {
+      col.classList.add('open');
+      this.innerText = '✕ 닫기';
+    }
+  } else {
+    col.classList.add('of-drawer-container', 'open');
+    this.innerText = '✕ 닫기';
+  }
+">📋 거래목록</div>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
@@ -1192,8 +1296,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 검색창 + 버튼을 한 줄로 (PC: 입력창 좁게 + 옆에 버튼, 모바일: CSS로 세로 stack)
-search_row = st.columns([5, 1], gap="small")
+# 검색창 — 입력창 안에 작은 🔍 아이콘 버튼 모양 (PC/모바일 통일)
+# 구현: 컬럼 비율 [20, 1] gap=small + 버튼 아이콘 only + CSS로 두 요소 시각적 통합
+search_row = st.columns([20, 1], gap="small")
 with search_row[0]:
     query = st.text_input(
         "질의", placeholder="자연어로 한 줄 입력 (예: 두창리 957-5와 비슷한 조건)",
@@ -1201,8 +1306,8 @@ with search_row[0]:
         key="of_query_input",
     )
 with search_row[1]:
-    go = st.button("🔍 검색", type="primary", use_container_width=True,
-                   key="of_search_btn")
+    go = st.button("🔍", type="primary", use_container_width=True,
+                   key="of_search_btn", help="검색")
 
 # ============================================================================
 #  📋 매물 교차 검증 — 외부 플랫폼에서 본 매물을 우리 DB와 일치도 점수로 매칭
@@ -1981,6 +2086,11 @@ if "result" in st.session_state:
 
     # ===== 표 =====
     with col_table:
+        # 모바일 드로어가 이 column을 식별할 수 있도록 anchor
+        st.markdown(
+            '<div id="of-tbl-anchor" style="height:1px;"></div>',
+            unsafe_allow_html=True,
+        )
         st.subheader("📋 거래 목록")
         # 시군구 라벨 매핑
         SIGG_LABEL = {"41461": "처인", "41463": "기흥", "41465": "수지"}
