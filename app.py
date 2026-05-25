@@ -1390,7 +1390,26 @@ div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
 components.html("""
 <script>
 (function() {
-  var doc = window.parent.document;
+  var doc = null;
+  try { doc = window.parent.document; }
+  catch(e) { try { doc = window.top.document; } catch(e2) {} }
+
+  // 디버그 패널 (사용자 화면에 보임)
+  function dbg(msg) {
+    if (!doc) return;
+    var el = doc.getElementById('of-js-debug');
+    if (!el) {
+      el = doc.createElement('div');
+      el.id = 'of-js-debug';
+      el.style.cssText = 'position:fixed;bottom:8px;left:8px;background:#dc2626;'
+        + 'color:white;padding:6px 10px;z-index:99999;font-size:11px;'
+        + 'font-family:monospace;max-width:340px;border:2px solid #0a0a0a;'
+        + 'box-shadow:2px 2px 0 #0a0a0a;line-height:1.4;';
+      doc.body.appendChild(el);
+    }
+    el.innerHTML = msg;
+  }
+  if (!doc) { dbg('❌ parent.document 접근 차단 (sandbox)'); return; }
 
   function applyDrawer() {
     var t = doc.getElementById('of-tbl-anchor');
@@ -1462,12 +1481,19 @@ components.html("""
 
   function applySearchFloat() {
     // 검색 form을 지도 위 floating으로 (상단 가운데)
-    var form = doc.querySelector('form[data-testid="stForm"]');
-    if (!form) return;
-    var ec = form.closest('.element-container');
+    // 다양한 selector 시도
+    var form = doc.querySelector('form[data-testid="stForm"]')
+      || doc.querySelector('div[data-testid="stForm"]')
+      || doc.querySelector('form');
+    if (!form) { window._ofDbgForm = 'NO'; return; }
+    window._ofDbgForm = 'YES (' + form.tagName + ')';
+    var ec = form.closest('.element-container')
+      || form.closest('[data-testid="element-container"]')
+      || form.parentElement;
     if (!ec) return;
     if (!ec.classList.contains('of-search-float')) {
       ec.classList.add('of-search-float');
+      window._ofDbgFloat = 'applied';
     }
   }
 
@@ -1476,6 +1502,17 @@ components.html("""
     try { applySummaryOverlay(); } catch(e) {}
     try { applyNarrowWidth(); } catch(e) {}
     try { applySearchFloat(); } catch(e) {}
+    // 디버그 표시
+    var nForms = doc.querySelectorAll('form').length;
+    var nExp = doc.querySelectorAll('[data-testid="stExpander"]').length;
+    var nIframe = doc.querySelectorAll('iframe').length;
+    var float = doc.querySelector('.of-search-float') ? '✓' : '✗';
+    var overlay = doc.querySelector('.of-summary-overlay') ? '✓' : '✗';
+    var drawer = doc.querySelector('.of-drawer-container') ? '✓' : '✗';
+    dbg('JS OK · form ' + nForms + ' · expander ' + nExp
+      + ' · iframe ' + nIframe + '<br>float ' + float
+      + ' · overlay ' + overlay + ' · drawer ' + drawer
+      + '<br>form찾기: ' + (window._ofDbgForm || '?'));
   }
   applyAll();
   setInterval(applyAll, 500);
