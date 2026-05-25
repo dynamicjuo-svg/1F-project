@@ -1253,6 +1253,29 @@ div[data-testid="stStatusWidget"] { display: none !important; }
 /* body/html 자체 viewport 고정 (스크롤 제거) */
 body, html { overflow: hidden !important; height: 100vh !important; }
 
+/* @st.dialog 모달 — 우리 fixed elements보다 위로, 가운데 정렬 */
+div[role="dialog"],
+div[data-testid="stDialog"],
+div[data-testid="stModal"] {
+  z-index: 99999 !important;
+}
+/* dialog backdrop도 위로 */
+div[data-testid="stDialogBackdrop"],
+div[data-testid="stModalBackdrop"] {
+  z-index: 99998 !important;
+}
+@media (min-width: 769px) {
+  div[role="dialog"] {
+    max-width: 760px !important;
+    width: 760px !important;
+    max-height: 82vh !important;
+    overflow-y: auto !important;
+    background: white !important;
+    border-radius: 14px !important;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.30) !important;
+  }
+}
+
 /* 결과 영역(GPT 카드 + 시세 요약) — 검색창 바로 아래 가운데, 모던 glass */
 .of-summary-overlay {
   position: fixed;
