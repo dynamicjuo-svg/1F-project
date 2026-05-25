@@ -1218,7 +1218,7 @@ div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
 </style>
 
 <script>
-// col_table → fixed drawer  +  결과 영역(GPT/시세) → 좌측 floating overlay
+// (참고) 이 script는 streamlit이 sanitize해서 실행 안 됨 — components.html()로 별도 처리
 (function() {
   function applyDrawer() {
     var t = document.getElementById('of-tbl-anchor');
@@ -1279,12 +1279,35 @@ div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
     endEc.style.display = 'none';
   }
 
+  function applyNarrowWidth() {
+    // 검색 form의 element-container max-width 520px
+    var form = document.querySelector('form[data-testid="stForm"]');
+    if (form) {
+      var ec = form.closest('.element-container, [data-testid="element-container"]');
+      if (ec) ec.style.maxWidth = '520px';
+      form.style.maxWidth = '520px';
+    }
+    // 매물 검증 expander
+    document.querySelectorAll('div[data-testid="stExpander"]').forEach(function(ex) {
+      var ec = ex.closest('.element-container, [data-testid="element-container"]');
+      if (ec) ec.style.maxWidth = '520px';
+      ex.style.maxWidth = '520px';
+    });
+  }
+
   function applyAll() {
     try { applyDrawer(); } catch(e) {}
     try { applySummaryOverlay(); } catch(e) {}
+    try { applyNarrowWidth(); } catch(e) {}
   }
   applyAll();
   setInterval(applyAll, 500);
+  // 페이지 로드 직후에도 강제 (streamlit 첫 렌더 후)
+  if (document.readyState === 'complete') {
+    setTimeout(applyAll, 100);
+  } else {
+    window.addEventListener('load', function() { setTimeout(applyAll, 100); });
+  }
 })();
 </script>
 
@@ -1315,6 +1338,93 @@ div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
   }
 ">📋 거래목록</div>
 """, unsafe_allow_html=True)
+
+# JS는 streamlit이 sanitize하니까 components.html() iframe으로 우회 — parent.document 접근
+components.html("""
+<script>
+(function() {
+  var doc = window.parent.document;
+
+  function applyDrawer() {
+    var t = doc.getElementById('of-tbl-anchor');
+    if (!t) return;
+    var col = t.parentElement;
+    while (col && !(col.getAttribute &&
+      (col.getAttribute('data-testid') === 'column' ||
+       col.getAttribute('data-testid') === 'stColumn'))) {
+      col = col.parentElement;
+      if (!col || col === doc.body) return;
+    }
+    if (col && !col.classList.contains('of-drawer-container')) {
+      col.classList.add('of-drawer-container');
+      window.parent._ofDrawerCol = col;
+    }
+  }
+
+  function applySummaryOverlay() {
+    var start = doc.getElementById('of-summary-start');
+    var end = doc.getElementById('of-summary-end');
+    if (!start || !end) return;
+    function ecParent(el) {
+      var p = el.parentElement;
+      while (p && !(p.classList && p.classList.contains('element-container'))) {
+        p = p.parentElement;
+        if (!p || p === doc.body) return null;
+      }
+      return p;
+    }
+    var startEc = ecParent(start);
+    var endEc = ecParent(end);
+    if (!startEc || !endEc) return;
+    if (startEc.previousElementSibling
+        && startEc.previousElementSibling.classList.contains('of-summary-overlay')) {
+      var wrapper = startEc.previousElementSibling;
+      var node = startEc.nextElementSibling;
+      while (node && node !== endEc) {
+        var next = node.nextElementSibling;
+        wrapper.appendChild(node);
+        node = next;
+      }
+      return;
+    }
+    var wrapper = doc.createElement('div');
+    wrapper.className = 'of-summary-overlay';
+    var parent = startEc.parentNode;
+    parent.insertBefore(wrapper, startEc);
+    var node = startEc.nextElementSibling;
+    while (node && node !== endEc) {
+      var next = node.nextElementSibling;
+      wrapper.appendChild(node);
+      node = next;
+    }
+    startEc.style.display = 'none';
+    endEc.style.display = 'none';
+  }
+
+  function applyNarrowWidth() {
+    var form = doc.querySelector('form[data-testid="stForm"]');
+    if (form) {
+      form.style.maxWidth = '520px';
+      var ec = form.closest('.element-container');
+      if (ec) ec.style.maxWidth = '520px';
+    }
+    doc.querySelectorAll('div[data-testid="stExpander"]').forEach(function(ex) {
+      ex.style.maxWidth = '520px';
+      var ec = ex.closest('.element-container');
+      if (ec) ec.style.maxWidth = '520px';
+    });
+  }
+
+  function applyAll() {
+    try { applyDrawer(); } catch(e) {}
+    try { applySummaryOverlay(); } catch(e) {}
+    try { applyNarrowWidth(); } catch(e) {}
+  }
+  applyAll();
+  setInterval(applyAll, 500);
+})();
+</script>
+""", height=0)
 
 # 사이드바 제거됨 (시안 4: 지도 풀스크린 컨셉)
 # include_road 옵션은 hardcode (필요시 검색 form 안 옵션으로 추가 가능)
