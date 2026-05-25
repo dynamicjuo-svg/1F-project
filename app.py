@@ -2727,6 +2727,15 @@ if "result" in st.session_state:
                         )
 
     # PNU 변경된 직후에만 dialog open — 직접 floating overlay
+    # 진단 박스 (항상 표시 — 클릭 시 selected_pnu 변경 추적)
+    _dbg_sel = prev_selected_pnu or "(없음)"
+    st.markdown(
+        f'<div style="position:fixed;top:160px;left:10px;background:#16a34a;'
+        f'color:white;padding:6px 10px;z-index:99999;font-size:11px;'
+        f'font-family:monospace;border-radius:6px;">'
+        f'SELECTED PNU: {_dbg_sel}</div>',
+        unsafe_allow_html=True,
+    )
     if prev_selected_pnu:
         # 닫기 버튼 클릭 시 selected_pnu = None
         st.markdown('<div id="of-dialog-start"></div>', unsafe_allow_html=True)
