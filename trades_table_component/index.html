@@ -272,6 +272,22 @@ function render() {
     });
     tr.onclick = function() {
       const pnu = row["PNU"];
+      console.log("[OF] table row click, pnu=", pnu);
+      // 부모 page에 시각적 디버그
+      try {
+        var pd = window.parent.document;
+        var el = pd.getElementById('of-tbl-click-dbg');
+        if (!el) {
+          el = pd.createElement('div');
+          el.id = 'of-tbl-click-dbg';
+          el.style.cssText = 'position:fixed;top:200px;left:10px;'
+            + 'background:#dc2626;color:white;padding:6px 10px;'
+            + 'z-index:99999;font-size:11px;font-family:monospace;'
+            + 'border-radius:6px;';
+          pd.body.appendChild(el);
+        }
+        el.innerText = '표 클릭됨: pnu=' + (pnu || 'NULL') + ' @ ' + new Date().toLocaleTimeString();
+      } catch(e) {}
       if (pnu) {
         Streamlit.setComponentValue({
           type: "row_click", pnu: pnu, ts: Date.now()
