@@ -1053,18 +1053,42 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   top: 70px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
-  width: 560px !important;
+  width: 360px !important;          /* 사용자 요청: 절반으로 축소 */
   max-width: calc(100vw - 28px) !important;
   z-index: 150 !important;
   background: rgba(254, 249, 195, 0.95);
   border: 3px solid #0a0a0a;
   box-shadow: 4px 4px 0 #dc2626;
-  padding: 8px 10px;
+  padding: 6px 8px;
   backdrop-filter: blur(3px);
 }
 .element-container.of-search-float form[data-testid="stForm"] {
   background: transparent !important; border: none !important;
   box-shadow: none !important; padding: 0 !important;
+  position: relative !important;
+}
+/* 검색 input 우측 padding 늘려서 아이콘 자리 확보 */
+.element-container.of-search-float input {
+  padding-right: 52px !important;
+  font-size: 14px !important;
+  height: 42px !important;
+}
+/* form_submit_button 을 input 안 우측에 absolute */
+.element-container.of-search-float div[data-testid="stFormSubmitButton"] {
+  position: absolute !important;
+  right: 4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  margin: 0 !important;
+  z-index: 5;
+}
+.element-container.of-search-float div[data-testid="stFormSubmitButton"] button {
+  height: 36px !important;
+  width: 42px !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  font-size: 16px !important;
+  box-shadow: 2px 2px 0 #0a0a0a !important;
 }
 /* 검색 input 내부에 아이콘 — input wrapper에 relative position 부여 */
 .of-search-icon-form > div { position: relative !important; }
@@ -1457,7 +1481,7 @@ st.markdown(
       <div>
         <div class="of-logo">One<span class="of-logo-accent">Family</span> 실거래가</div>
       </div>
-      <span class="of-badge">용인시 3개구 · 42개 읍·면·동</span>
+<!-- 용인시 배지 제거 (사용자 요청) -->
       <span class="of-version-inline">{APP_VERSION} · {APP_RELEASE_DATE}</span>
     </div>
     """,
@@ -1624,6 +1648,20 @@ if go and query:
     st.session_state.map_key = f"map_{datetime.now().timestamp()}"
 
 # 결과 표시
+if "result" not in st.session_state:
+    # 검색 전: 빈 지도만 풀스크린으로 미리 표시 (용인시 가운데)
+    of_naver_map(
+        client_id=NAVER_MAP_CLIENT_ID,
+        center=[37.21, 127.20],   # 용인시 처인구·기흥구·수지구 가운데
+        zoom=11,
+        markers=[], polygons=[],
+        road_lines=None,
+        sel_color=SELECTED_COLOR,
+        zoom_label_threshold=15,
+        recenter=True,
+        key="of_naver_map_empty",
+    )
+
 if "result" in st.session_state:
     result = st.session_state.result
     cond = result["cond"]
