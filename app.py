@@ -842,7 +842,7 @@ APP_RELEASE_DATE = "2026-05-25"
 st.set_page_config(
     page_title="OneFamily 실거래가",
     page_icon="🟨", layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",  # 시안 4: 기본 접힘, 햄버거 아이콘만
 )
 
 # 글로벌 CSS — Brutalist Bold
@@ -1040,199 +1040,107 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# 반응형 CSS는 별도 markdown 호출 (f-string 아님 — 중괄호 이스케이프 안 필요)
+# 반응형 CSS — 단순 raw string, 큰 박스주석/한글 주석 안 씀 (streamlit 처리 깨짐 회피)
 st.markdown("""
 <style>
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-/*  시안 4 (PC, ≥769px): 지도 풀스크린 + 사이드바 floating overlay  */
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-testid="stHorizontalBlock"] div.stButton > button {
+  height: 50px; min-width: 0; padding: 0 14px; font-size: 18px; white-space: nowrap;
+}
+.of-brand-slim {
+  display: flex; align-items: center; gap: 12px;
+  padding: 6px 0 8px 0; border-bottom: 2px solid #0a0a0a; margin-bottom: 10px;
+}
+.of-brand-slim .of-logo-box { font-size: 16px !important; padding: 4px 8px !important; }
+.of-brand-slim .of-logo { font-size: 20px !important; }
+.of-brand-slim .of-badge { font-size: 9px !important; padding: 3px 7px !important; }
+.of-version-inline {
+  margin-left: auto; font-family: 'Archivo Black', monospace;
+  font-size: 10px; color: #6a6a6a; letter-spacing: 0.08em;
+}
+/* 검색창 폭 + 매물검증 expander 폭 — 화면 가운데 가까이 좁게 */
+.of-narrow-wrap {
+  max-width: 520px; margin: 8px 0 10px 0;
+}
+/* 검색 input 내부에 아이콘 — input wrapper에 relative position 부여 */
+.of-search-icon-form > div { position: relative !important; }
+.of-search-icon-form .stTextInput > div > div > input {
+  padding-right: 48px !important;
+}
+.of-search-icon-form .stFormSubmitButton,
+.of-search-icon-form div[data-testid="stFormSubmitButton"] {
+  position: absolute !important;
+  right: 4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 5;
+}
+.of-search-icon-form .stFormSubmitButton button,
+.of-search-icon-form div[data-testid="stFormSubmitButton"] button {
+  height: 38px !important;
+  min-width: 0 !important;
+  padding: 0 12px !important;
+  font-size: 16px !important;
+  box-shadow: 2px 2px 0 #0a0a0a !important;
+}
+
+/* PC (>=769px) — 시안 4 풀스크린 컨셉 */
 @media (min-width: 769px) {
-  /* main 영역은 viewport 전체 차지 (사이드바 자리 margin 안 줌) */
   section.main > div.block-container {
-    padding-top: 12px !important;
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-    padding-bottom: 0 !important;
+    padding-top: 10px !important; padding-left: 16px !important;
+    padding-right: 16px !important; padding-bottom: 0 !important;
     max-width: 100% !important;
   }
   section[data-testid="stSidebar"] > div:first-child {
     background: rgba(254, 243, 199, 0.97) !important;
-    backdrop-filter: blur(4px);
     border-right: 3px solid #0a0a0a !important;
     box-shadow: 5px 0 0 #dc2626;
-    width: 380px !important;
+    width: 360px !important;
   }
-  /* 슬림 헤더 — 한 줄로 압축 */
-  .of-brand-slim {
-    display: flex !important;
-    align-items: center !important;
-    gap: 12px !important;
-    padding: 4px 0 6px 0 !important;
-    border-bottom: 2px solid #0a0a0a;
-    margin-bottom: 10px !important;
-  }
-  .of-brand-slim .of-logo-box {
-    font-size: 16px !important;
-    padding: 4px 8px !important;
-  }
-  .of-brand-slim .of-logo {
-    font-size: 22px !important;
-  }
-  .of-brand-slim .of-badge {
-    font-size: 9px !important;
-    padding: 3px 7px !important;
-  }
-  .of-version-inline {
-    margin-left: auto;
-    font-family: 'Archivo Black', monospace;
-    font-size: 10px;
-    color: #6a6a6a;
-    letter-spacing: 0.08em;
-  }
-  /* 결과 영역 — 지도가 크게 보이도록 */
-  /* col_map의 지도 iframe 키우기 */
+  /* 지도 iframe 풀 viewport */
   div[data-testid="column"] iframe[height="540"] {
-    height: calc(100vh - 200px) !important;
-    min-height: 540px;
+    height: calc(100vh - 180px) !important; min-height: 540px;
   }
-  /* 표 iframe도 같이 키워서 우측 영역 시원하게 */
   div[data-testid="column"] iframe[height="490"] {
-    height: calc(100vh - 240px) !important;
-    min-height: 490px;
+    height: calc(100vh - 220px) !important; min-height: 490px;
   }
-  /* GPT 응답 카드 — PC에서 더 컴팩트하게 */
   .of-gpt-card {
-    padding: 14px 18px !important;
-    margin: 10px 0 14px 0 !important;
-    font-size: 13.5px !important;
+    padding: 12px 16px !important; margin: 8px 0 12px 0 !important;
+    font-size: 13px !important;
   }
-  /* 시세 요약 metric 영역 컴팩트 */
-  h2, h3 { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
+  h2, h3 { margin-top: 0.4rem !important; margin-bottom: 0.4rem !important; }
   div[data-testid="stMetric"] { padding: 4px 8px !important; }
 }
 
-/* 검색창 + 아이콘 버튼 — PC/모바일 통일된 가로 배치 + 시각적 일체화 */
-div[data-testid="stHorizontalBlock"] div.stButton > button {
-  height: 50px;
-  min-width: 0;
-  padding: 0 14px;
-  font-size: 18px;
-  white-space: nowrap;
-}
-
+/* 모바일 (<=768px) */
 @media (max-width: 768px) {
   .of-logo { font-size: 22px !important; }
   .of-logo-box { font-size: 18px !important; padding: 5px 9px !important; }
   .of-brand { flex-wrap: wrap; gap: 8px !important; }
   .of-badge { font-size: 10px !important; padding: 3px 7px !important; }
   .of-brand-sub { font-size: 12px !important; }
-  .of-version { font-size: 9px !important; }
-  /* 헤더 위 영역 줄이기 */
-  .block-container { padding-top: 1.5rem !important; padding-left: 0.5rem !important;
+  .block-container { padding-top: 1rem !important; padding-left: 0.5rem !important;
                      padding-right: 0.5rem !important; }
   .stTextInput > div > div > input {
-    font-size: 14px !important;
-    padding: 11px 12px !important;
+    font-size: 14px !important; padding: 11px 12px !important;
   }
   div.stButton > button {
-    font-size: 14px !important;
-    padding: 10px 12px !important;
-    height: 46px !important;
+    font-size: 14px !important; padding: 10px 12px !important; height: 46px !important;
   }
   div[data-testid="stHorizontalBlock"] div.stButton > button {
-    height: 46px !important;
-    padding: 0 10px !important;
-    font-size: 16px !important;
+    height: 46px !important; padding: 0 10px !important; font-size: 16px !important;
   }
   div[data-testid="stMetricValue"] { font-size: 16px !important; }
   div[data-testid="stMetricLabel"] { font-size: 10.5px !important; }
-  /* dialog 모바일에서 작게 + 지도 아래쯤에 뜨도록 */
   div[role="dialog"] {
-    max-width: 92vw !important;
-    width: 92vw !important;
-    max-height: 60vh !important;
-    margin-top: 30vh !important;   /* 지도 위에서 30vh 밑으로 내려옴 */
+    max-width: 92vw !important; width: 92vw !important;
+    max-height: 60vh !important; margin-top: 30vh !important;
   }
   div[role="dialog"] > div { padding: 10px 12px !important; }
-  /* 지도 iframe: 모바일에서 거의 풀스크린 (헤더+검색창 빼고 다) */
   iframe[height="540"] { height: 72vh !important; min-height: 380px !important; }
-  /* 표 iframe: 모바일에선 처음에 숨김 (드로어 핸들로 슬라이드) */
   iframe[height="490"] { height: 70vh !important; }
-}
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-/* 모바일 드로어 — 표 column을 오른쪽 슬라이드 (JS로 class 토글) */
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-@media (max-width: 768px) {
-  .of-drawer-container {
-    position: fixed !important;
-    top: 0 !important;
-    right: 0 !important;
-    width: 92vw !important;
-    height: 100vh !important;
-    background: white !important;
-    z-index: 9000 !important;
-    border-left: 3px solid #0a0a0a !important;
-    box-shadow: -8px 0 16px rgba(0,0,0,0.18) !important;
-    transform: translateX(100%);
-    transition: transform 0.28s ease;
-    overflow-y: auto;
-    padding: 14px 12px;
-  }
-  .of-drawer-container.open {
-    transform: translateX(0);
-  }
-  /* 드로어 핸들 — 화면 오른쪽 가장자리에 세로 탭 */
-  #of-drawer-handle {
-    display: flex !important;
-  }
-}
-#of-drawer-handle {
-  display: none;
-  position: fixed;
-  top: 50%; right: 0;
-  transform: translateY(-50%);
-  background: #0a0a0a;
-  color: #fbbf24;
-  z-index: 9100;
-  padding: 14px 8px;
-  font-family: 'Archivo Black', sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
-  box-shadow: -3px 3px 0 rgba(0,0,0,0.3);
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  user-select: none;
+  .of-narrow-wrap { max-width: 100% !important; }
 }
 </style>
-
-<!-- 모바일 드로어 핸들 — 오른쪽 가장자리에 항상 떠 있음 -->
-<div id="of-drawer-handle" onclick="
-  const t = document.getElementById('of-tbl-anchor');
-  if (!t) return;
-  // 표 마커의 가장 가까운 column 찾기
-  let col = t.closest('[data-testid=\\'column\\']');
-  if (!col) col = t.parentElement;
-  while (col && !col.matches('[data-testid=column], [data-testid=stColumn]')) {
-    col = col.parentElement;
-  }
-  if (!col) return;
-  if (col.classList.contains('of-drawer-container')) {
-    if (col.classList.contains('open')) {
-      col.classList.remove('open');
-      this.innerText = '📋 거래목록';
-    } else {
-      col.classList.add('open');
-      this.innerText = '✕ 닫기';
-    }
-  } else {
-    col.classList.add('of-drawer-container', 'open');
-    this.innerText = '✕ 닫기';
-  }
-">📋 거래목록</div>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
@@ -1356,24 +1264,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 검색창 — 입력창 안에 작은 🔍 아이콘 버튼 모양 (PC/모바일 통일)
-# 구현: 컬럼 비율 [20, 1] gap=small + 버튼 아이콘 only + CSS로 두 요소 시각적 통합
-search_row = st.columns([20, 1], gap="small")
-with search_row[0]:
+# 검색창 — 입력창 안에 작은 🔍 아이콘 (form submit 버튼을 absolute로 input 위에 오버레이)
+# 폭은 좁게 (max-width: 520px)
+st.markdown('<div class="of-narrow-wrap of-search-icon-form">',
+            unsafe_allow_html=True)
+with st.form(key="of_search_form", clear_on_submit=False, border=False):
     query = st.text_input(
-        "질의", placeholder="자연어로 한 줄 입력 (예: 두창리 957-5와 비슷한 조건)",
+        "질의", placeholder="자연어 한 줄 입력 (예: 두창리 957-5와 비슷한 조건)",
         label_visibility="collapsed",
         key="of_query_input",
     )
-with search_row[1]:
-    go = st.button("🔍", type="primary", use_container_width=True,
-                   key="of_search_btn", help="검색")
+    go = st.form_submit_button("🔍", type="primary", help="검색")
+st.markdown('</div>', unsafe_allow_html=True)
 
-# ============================================================================
-#  📋 매물 교차 검증 — 외부 플랫폼에서 본 매물을 우리 DB와 일치도 점수로 매칭
-# ============================================================================
-with st.expander("📋 매물 교차 검증 — 외부 플랫폼에서 본 매물 정보를 우리 DB와 대조",
-                  expanded=False):
+# 매물 교차 검증 — 폭 좁게 (검색창과 동일)
+st.markdown('<div class="of-narrow-wrap">', unsafe_allow_html=True)
+with st.expander("📋 매물 교차 검증", expanded=False):
     st.markdown(
         f"<div style='font-size:13px;color:#475569;margin-bottom:8px;line-height:1.6;'>"
         f"네이버 부동산·디스코·밸류맵 등에서 본 매물 정보를 한 줄로 입력하면 "
@@ -1498,6 +1404,7 @@ with st.expander("📋 매물 교차 검증 — 외부 플랫폼에서 본 매�
                                 f"아래 결과 영역의 dialog 또는 새 검색 시 표시됩니다."
                             )
                             st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)  # /of-narrow-wrap (매물검증)
 
 if go and query:
     with st.spinner("자연어 분석 + 검색 중... (5초 정도)"):
@@ -1943,8 +1850,8 @@ if "result" in st.session_state:
         st.session_state._dialog_shown_for = prev_selected_pnu
         show_parcel_dialog(prev_selected_pnu)
 
-    # 시안 4: 지도가 main의 거의 전체 차지. 표는 좁은 col + 우측 floating dialog
-    col_map, col_table = st.columns([2.4, 1])
+    # 시안 4: 지도가 main의 거의 전체 차지. 표는 매우 좁은 col (사이드바 역할)
+    col_map, col_table = st.columns([3.5, 1])
 
     # ===== 지도 (네이버) =====
     with col_map:
