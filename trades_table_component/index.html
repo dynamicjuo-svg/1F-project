@@ -241,6 +241,7 @@ function render() {
     if (conf === "low") tr.classList.add("conf-low");
     if (_selectedPnu && row["PNU"] === _selectedPnu) {
       tr.classList.add("selected");
+      tr.dataset.ofSelected = "1";
     }
     _columns.forEach(function(col) {
       const td = document.createElement("td");
@@ -258,6 +259,23 @@ function render() {
     };
     tbody.appendChild(tr);
   });
+  // 선택된 row를 스크롤 영역의 위쪽으로 자동 이동
+  // (지도에서 클릭 → 표에서 찾으려고 스크롤 내릴 필요 없게)
+  if (_selectedPnu) {
+    setTimeout(function() {
+      const selTr = tbody.querySelector('tr[data-of-selected="1"]');
+      if (selTr) {
+        const scrollEl = document.getElementById('scroll');
+        if (scrollEl) {
+          // 선택 row가 스크롤 영역 상단에서 약간 아래(헤더 가림 회피)에 오도록
+          const offsetTop = selTr.offsetTop - 8;
+          scrollEl.scrollTo({ top: offsetTop, behavior: 'smooth' });
+        } else {
+          selTr.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }
+      }
+    }, 50);
+  }
 }
 
 Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, function(event) {
