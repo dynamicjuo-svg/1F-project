@@ -1022,27 +1022,17 @@ st.markdown(f"""
     border-radius: 0 !important;
     background: white;
   }}
-  /* 디바이더 */
   hr {{ border-top: 3px solid {BRAND_NAVY} !important; }}
-
-  /* PC에서 검색 row 안 버튼은 입력창 높이에 맞춤 */
-  div[data-testid="stHorizontalBlock"] div.stButton > button {{
-    height: 52px;
-    white-space: nowrap;
-  }}
-
-  /* 글꼴 — 큰 타이틀에 Archivo Black */
-  h1, h2, h3 {{
-    font-family: 'Archivo Black', 'Pretendard', sans-serif !important;
-    color: {BRAND_NAVY};
-    letter-spacing: -0.02em;
-  }}
 </style>
 """, unsafe_allow_html=True)
 
 # 반응형 CSS — 단순 raw string, 큰 박스주석/한글 주석 안 씀 (streamlit 처리 깨짐 회피)
 st.markdown("""
 <style>
+h1, h2, h3 {
+  font-family: 'Archivo Black', 'Pretendard', sans-serif !important;
+  color: #0a0a0a; letter-spacing: -0.02em;
+}
 div[data-testid="stHorizontalBlock"] div.stButton > button {
   height: 50px; min-width: 0; padding: 0 14px; font-size: 18px; white-space: nowrap;
 }
