@@ -1512,40 +1512,35 @@ components.html("""
   }
 
   function applyFullscreenMap() {
-    // 지도 iframe (height=540)을 viewport 전체에 fixed로 깔기 (z-index 1)
+    // 지도 iframe 자체를 position:fixed로 viewport 전체 차지 (z-index 1)
+    // body overflow도 강제
+    if (doc.body) {
+      doc.body.style.overflow = 'hidden';
+      doc.body.style.height = '100vh';
+      doc.body.style.margin = '0';
+    }
+    if (doc.documentElement) {
+      doc.documentElement.style.overflow = 'hidden';
+      doc.documentElement.style.height = '100vh';
+    }
     var nMaps = 0;
     doc.querySelectorAll('iframe').forEach(function(f) {
       var h = parseInt(f.getAttribute('height') || '0');
       var src = (f.src || '') + (f.title || '');
       var isMap = (h === 540) || (src.indexOf('naver') >= 0);
       if (isMap) {
-        f.style.height = '100vh';
+        f.style.position = 'fixed';
+        f.style.top = '0';
+        f.style.left = '0';
+        f.style.right = '0';
+        f.style.bottom = '0';
         f.style.width = '100vw';
+        f.style.height = '100vh';
         f.style.display = 'block';
         f.style.border = 'none';
+        f.style.zIndex = '1';
+        f.style.margin = '0';
         nMaps++;
-        // 가장 가까운 element-container를 fixed로
-        var ec = f.parentElement;
-        var depth = 0;
-        while (ec && ec !== doc.body && depth < 6) {
-          if (ec.classList && (
-              ec.classList.contains('element-container') ||
-              (ec.getAttribute && ec.getAttribute('data-testid') === 'element-container'))) {
-            ec.style.position = 'fixed';
-            ec.style.top = '0';
-            ec.style.left = '0';
-            ec.style.right = '0';
-            ec.style.bottom = '0';
-            ec.style.width = '100vw';
-            ec.style.height = '100vh';
-            ec.style.zIndex = '1';
-            ec.style.margin = '0';
-            ec.style.padding = '0';
-            break;
-          }
-          ec = ec.parentElement;
-          depth++;
-        }
       }
     });
     window._ofDbgMap = nMaps;
