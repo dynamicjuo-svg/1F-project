@@ -1256,16 +1256,88 @@ div[data-testid="stStatusWidget"] { display: none !important; }
 /* body/html 자체 viewport 고정 (스크롤 제거) */
 body, html { overflow: hidden !important; height: 100vh !important; }
 
-/* 초기 로드 + rerun 시 streamlit 자연 흐름 화면 노이즈 차단 */
-@keyframes of-page-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* 첫 로드 splash 스크린 — 노란 배경 + 로고 + 회전 링 */
+.of-splash {
+  position: fixed;
+  inset: 0;
+  background: #fef3c7;
+  z-index: 999990;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  pointer-events: none;
+  animation: of-splash-out 0.5s 1.2s ease-out forwards;
 }
-body {
-  opacity: 0;
-  animation: of-page-fade-in 0.4s 0.6s ease-out forwards;
+@keyframes of-splash-out {
+  to { opacity: 0; visibility: hidden; transform: scale(1.03); }
 }
-/* rerun 시 main 영역도 짧은 fade — block-container가 다시 그려질 때 */
+.of-splash-logo-row {
+  display: flex; align-items: center; gap: 14px;
+}
+.of-splash-logo-box {
+  background: #dc2626;
+  color: white;
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 22px;
+  padding: 8px 14px;
+  border: 3px solid #0a0a0a;
+  box-shadow: 4px 4px 0 #0a0a0a;
+  animation: of-splash-bounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes of-splash-bounce {
+  from { transform: translateY(-30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.of-splash-logo {
+  font-family: 'Archivo Black', 'Pretendard', sans-serif;
+  font-size: 38px;
+  color: #0a0a0a;
+  letter-spacing: -0.03em;
+}
+.of-splash-logo .ac { color: #dc2626; }
+.of-splash-rings {
+  position: relative;
+  width: 70px; height: 70px;
+  margin-top: 8px;
+}
+.of-splash-rings div {
+  position: absolute;
+  inset: 0;
+  border: 4px solid transparent;
+  border-top-color: #dc2626;
+  border-radius: 50%;
+  animation: of-spin 1.0s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+.of-splash-rings div:nth-child(2) {
+  inset: 10px;
+  border-top-color: #0a0a0a;
+  animation-duration: 0.75s;
+  animation-direction: reverse;
+}
+.of-splash-text {
+  font-family: 'Pretendard', sans-serif;
+  font-size: 13px;
+  color: #92400e;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  animation: of-pulse-text 1.4s ease-in-out infinite;
+}
+@keyframes of-pulse-text {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+.of-splash-version {
+  font-family: 'Archivo Black', monospace;
+  font-size: 10px;
+  color: #92400e;
+  letter-spacing: 0.1em;
+  opacity: 0.6;
+  margin-top: 4px;
+}
+
+/* rerun 시 main 영역도 짧은 fade */
 @keyframes of-main-fade {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -2061,6 +2133,17 @@ div[role="dialog"] iframe {
 </script>
 
 <div id="of-drawer-handle">📋 거래목록 열기</div>
+
+<!-- 첫 로드 splash 스크린 (1.7초 후 자동 사라짐) -->
+<div class="of-splash" id="of-splash">
+  <div class="of-splash-logo-row">
+    <div class="of-splash-logo-box">OF</div>
+    <div class="of-splash-logo">One<span class="ac">Family</span></div>
+  </div>
+  <div class="of-splash-rings"><div></div><div></div></div>
+  <div class="of-splash-text">실거래 데이터 불러오는 중...</div>
+  <div class="of-splash-version">v2.1 · 2026-05-25</div>
+</div>
 """, unsafe_allow_html=True)
 
 # JS는 streamlit이 sanitize하니까 components.html() iframe으로 우회 — parent.document 접근
