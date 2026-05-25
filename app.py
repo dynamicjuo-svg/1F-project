@@ -1426,9 +1426,13 @@ components.html("""
   try { doc = window.parent.document; }
   catch(e) { try { doc = window.top.document; } catch(e2) {} }
 
-  // 디버그 패널 (사용자 화면에 보임)
+  // 디버그 패널 — ?debug=1 URL일 때만 표시
+  var _ofDebugEnabled = false;
+  try {
+    _ofDebugEnabled = (window.parent.location.search || '').indexOf('debug=1') >= 0;
+  } catch(e) {}
   function dbg(msg) {
-    if (!doc) return;
+    if (!doc || !_ofDebugEnabled) return;
     var el = doc.getElementById('of-js-debug');
     if (!el) {
       el = doc.createElement('div');
@@ -1441,7 +1445,7 @@ components.html("""
     }
     el.innerHTML = msg;
   }
-  if (!doc) { dbg('❌ parent.document 접근 차단 (sandbox)'); return; }
+  if (!doc) { return; }
 
   function applyDrawer() {
     var t = doc.getElementById('of-tbl-anchor');

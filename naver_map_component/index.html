@@ -281,39 +281,29 @@ function renderMap(args) {
     const cadHint = document.createElement('div');
     const dbgBox = document.createElement('div');
     cadBtn.style.cssText =
-      'position:absolute;top:10px;left:10px;z-index:1000;' +
-      'padding:10px 14px;background:white;border:1px solid #c0c0c0;' +
-      'border-radius:6px;cursor:pointer;font-size:13px;' +
-      'box-shadow:0 1px 3px rgba(0,0,0,0.2);font-weight:500;' +
-      'touch-action:manipulation;';
-    cadHint.style.cssText =
-      'position:absolute;top:60px;left:10px;z-index:1000;' +
-      'padding:6px 10px;background:#fef3c7;color:#92400e;' +
-      'border:1px solid #fbbf24;border-radius:4px;font-size:11px;' +
-      'box-shadow:0 1px 3px rgba(0,0,0,0.15);display:none;';
-    cadHint.innerText = '🔍 핀치줌으로 더 확대 → 줌 14↑';
-    // 디버그 패널 — 우측 상단. 모바일에선 숨김 (URL에 ?debug=1 있을 때만 표시)
+      'position:absolute;top:10px;right:10px;z-index:1000;' +
+      'padding:8px 12px;background:#0a0a0a;color:#fbbf24;' +
+      'border:2px solid #0a0a0a;cursor:pointer;font-size:12px;font-weight:700;' +
+      'font-family:"Archivo Black",sans-serif;letter-spacing:0.04em;' +
+      'box-shadow:2px 2px 0 #dc2626;touch-action:manipulation;';
+    cadHint.style.cssText = 'display:none;';
+    cadHint.innerText = '';
+    // 디버그 패널 — ?debug=1 URL일 때만 표시 (기본 hide)
     dbgBox.id = 'of-debug';
-    const isMobile = window.innerWidth < 769;
     const debugForced = (window.location.search || '').indexOf('debug=1') >= 0
       || (window.parent && (window.parent.location.search || '').indexOf('debug=1') >= 0);
-    const showDebug = !isMobile || debugForced;
     dbgBox.style.cssText =
-      'position:absolute;top:10px;right:10px;z-index:1000;' +
+      'position:absolute;top:10px;right:60px;z-index:1000;' +
       'padding:8px 12px;background:#fef3c7;border:3px solid #0a0a0a;' +
       'box-shadow:3px 3px 0 #0a0a0a;font-family:monospace;' +
       'font-size:11.5px;line-height:1.5;color:#0a0a0a;font-weight:600;' +
       'min-width:160px;' +
-      (showDebug ? '' : 'display:none;');
+      (debugForced ? '' : 'display:none;');
     dbgBox.innerText = 'debug …';
     function refreshCad() {
-      const z = map.getZoom();
       const on = !!_cadastralLayer.getMap();
-      const enough = z >= 14;
-      cadBtn.innerText = '🗺️ 지번 ' + (on ? 'ON' : 'OFF') + ' · zoom ' + z;
-      cadBtn.style.opacity = on ? '1' : '0.6';
-      cadBtn.style.background = (on && !enough) ? '#fff7ed' : 'white';
-      cadHint.style.display = (on && !enough) ? 'block' : 'none';
+      cadBtn.innerText = on ? '🗺️ 지적편집도 ON' : '🗺️ 지적편집도 OFF';
+      cadBtn.style.opacity = on ? '1' : '0.65';
     }
     cadBtn.onclick = function() {
       if (_cadastralLayer.getMap()) _cadastralLayer.setMap(null);
