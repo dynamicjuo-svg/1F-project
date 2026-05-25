@@ -215,7 +215,7 @@ function render() {
 
   // 모바일에서 숨길 컬럼 — 핵심 4컬럼만 보이게 (지번/면적평/금액/시기)
   const MOBILE_VISIBLE = new Set([
-    "지번", "면적(평)", "금액(만원)", "시기",
+    "지번", "면적(평)", "금액(만원)", "평단가(만원/평)", "시기",
   ]);
   function isMobileHidden(colName) {
     return !MOBILE_VISIBLE.has(colName);
