@@ -1905,12 +1905,57 @@ components.html("""
     }
   }
 
+  function applyDialogFix() {
+    // streamlit @st.dialog 다양한 selector 시도
+    var dialogs = doc.querySelectorAll(
+      'dialog, [role="dialog"], [data-testid="stDialog"], ' +
+      '[aria-modal="true"], [data-testid="stDialogContainer"], ' +
+      '[data-testid="stModal"]'
+    );
+    dialogs.forEach(function(d) {
+      d.style.position = 'fixed';
+      d.style.top = '50%';
+      d.style.left = '50%';
+      d.style.transform = 'translate(-50%, -50%)';
+      d.style.zIndex = '99999';
+      d.style.display = 'block';
+      d.style.visibility = 'visible';
+      d.style.opacity = '1';
+      d.style.background = 'white';
+      d.style.maxWidth = '760px';
+      d.style.width = '760px';
+      d.style.maxHeight = '82vh';
+      d.style.overflowY = 'auto';
+      d.style.borderRadius = '14px';
+      d.style.boxShadow = '0 24px 60px rgba(15,23,42,0.30)';
+      d.style.padding = '20px 24px';
+      // dialog 안 element-container들의 fixed 풀기
+      d.querySelectorAll('.element-container, [data-testid="element-container"]')
+        .forEach(function(ec) {
+          ec.style.position = 'static';
+          ec.style.height = 'auto';
+          ec.style.minHeight = '0';
+          ec.style.maxHeight = 'none';
+          ec.style.width = 'auto';
+          ec.style.top = 'auto';
+          ec.style.left = 'auto';
+        });
+      d.querySelectorAll('iframe').forEach(function(f) {
+        f.style.position = 'static';
+        f.style.height = 'auto';
+        f.style.width = '100%';
+      });
+    });
+    window._ofDbgDialogs = dialogs.length;
+  }
+
   function applyAll() {
     try { applyDrawer(); } catch(e) {}
     try { applySummaryOverlay(); } catch(e) {}
     try { applyNarrowWidth(); } catch(e) {}
     try { applySearchFloat(); } catch(e) {}
     try { applyFullscreenMap(); } catch(e) {}
+    try { applyDialogFix(); } catch(e) {}
     // 디버그 표시
     var nForms = doc.querySelectorAll('form').length;
     var nExp = doc.querySelectorAll('[data-testid="stExpander"]').length;
@@ -1922,6 +1967,7 @@ components.html("""
       + ' · iframe ' + nIframe + '<br>float ' + float
       + ' · overlay ' + overlay + ' · drawer ' + drawer
       + '<br>map iframe 100vh: ' + (window._ofDbgMap || 0)
+      + '<br>dialogs: ' + (window._ofDbgDialogs || 0)
       + '<br>form찾기: ' + (window._ofDbgForm || '?'));
   }
   applyAll();
