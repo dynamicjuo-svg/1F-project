@@ -1872,12 +1872,26 @@ div[role="dialog"] iframe {
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12),
               0 2px 6px rgba(15, 23, 42, 0.05) !important;
   z-index: 100 !important;
-  overflow: hidden !important;
+  overflow-y: auto !important;     /* 사이드패널 자체 스크롤 */
+  overflow-x: hidden !important;
   padding: 14px 8px 8px 14px !important;
   backdrop-filter: blur(14px) saturate(1.4);
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
   transform: none !important;
   transition: opacity 0.2s ease, transform 0.2s ease !important;
+  /* 스크롤바 명확하게 */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+.of-drawer-container::-webkit-scrollbar { width: 8px; }
+.of-drawer-container::-webkit-scrollbar-track {
+  background: #f8fafc; border-radius: 4px;
+}
+.of-drawer-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1; border-radius: 4px;
+}
+.of-drawer-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 .of-drawer-container.collapsed {
   opacity: 0;
