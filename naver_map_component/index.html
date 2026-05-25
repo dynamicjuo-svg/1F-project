@@ -247,13 +247,20 @@ function renderMap(args) {
         nHidden++;
       }
     });
-    // 줌 임계 이상에서 마커는 숨김 (폴리곤과 중복 방지)
+    // 마커는 항상 표시 — 라벨(평수·평단가·시기)이 폴리곤 위에 보이게.
+    // 줌 임계 이상에서는 dot만 hide(폴리곤과 dot 중복 방지), label은 그대로.
     _drawnMarkers.forEach(function(mk) {
-      const isSel = !!mk._ofIsSelected;
-      if (show && !isSel) {
-        if (mk.getMap()) mk.setMap(null);
+      if (!mk.getMap()) mk.setMap(map);
+    });
+    document.querySelectorAll('.marker-dot').forEach(function(dot) {
+      if (show) {
+        dot.style.opacity = '0';
+        dot.style.width = '2px';
+        dot.style.height = '2px';
       } else {
-        if (!mk.getMap()) mk.setMap(map);
+        dot.style.opacity = '';
+        dot.style.width = '';
+        dot.style.height = '';
       }
     });
     // 디버그 패널 업데이트 — module-level 카운트 사용 (재마운트 시 reset 방지)
