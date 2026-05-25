@@ -85,7 +85,20 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "trades.db")
 STATIC_DIR = os.path.join(HERE, "static")
 os.makedirs(STATIC_DIR, exist_ok=True)
-ALLOWED_EMD = {"백암면", "원삼면"}
+def _load_allowed_emd():
+    """region_prefix_cache.json에서 모든 emd 추출. 처인구(+추후 기흥/수지) 전체."""
+    import json as _json
+    p = os.path.join(HERE, "region_prefix_cache.json")
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            d = _json.load(f)
+        emds = set(d.get("emd_map", {}).keys())
+        if emds:
+            return emds
+    return {"백암면", "원삼면"}  # fallback
+
+
+ALLOWED_EMD = _load_allowed_emd()
 PYEONG_PER_M2 = 1.0 / 3.3058
 SELECTED_COLOR = "#dc2626"
 CONF_COLOR = {"high": "#22c55e", "mid": "#f97316", "low": "#9ca3af"}
@@ -809,141 +822,258 @@ def format_cond_as_sentence(cond, result):
 
 
 # =====================================================================
-#  Streamlit UI — OneFamily 실거래가 (찐파랑 컨셉)
+#  Streamlit UI — OneFamily 실거래가 (Brutalist Bold 컨셉)
 # =====================================================================
-BRAND_NAVY = "#2563EB"       # 산뜻한 모던 파랑 (Tailwind blue-600)
-BRAND_NAVY_DEEP = "#1D4ED8"  # 강조 톤 (blue-700)
-BRAND_NAVY_LIGHT = "#EFF6FF" # 배경 옅은 파랑 (blue-50)
+BRAND_NAVY = "#0a0a0a"        # 검정 (primary)
+BRAND_NAVY_DEEP = "#0a0a0a"   # 검정 그대로
+BRAND_NAVY_LIGHT = "#fef3c7"  # 노란 베이지 BG
+BRAND_RED = "#dc2626"         # 강조 빨강
+BRAND_YELLOW = "#fbbf24"      # 보조 노랑
+
+APP_VERSION = "v2.0"
+APP_RELEASE_DATE = "2026-05-25"
 
 st.set_page_config(
     page_title="OneFamily 실거래가",
-    page_icon="🏛️", layout="wide",
+    page_icon="🟨", layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# 글로벌 CSS — 모던 + 찐파랑
+# 글로벌 CSS — Brutalist Bold
 st.markdown(f"""
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Pretendard:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {{
-    --navy: {BRAND_NAVY};
-    --navy-deep: {BRAND_NAVY_DEEP};
-    --navy-light: {BRAND_NAVY_LIGHT};
+    --ink: {BRAND_NAVY};
+    --bg: {BRAND_NAVY_LIGHT};
+    --red: {BRAND_RED};
+    --yellow: {BRAND_YELLOW};
   }}
-  /* 간결한 헤더 */
+  /* 배경 — 노란 + 옅은 격자 */
+  .stApp {{
+    background-color: {BRAND_NAVY_LIGHT};
+    background-image:
+      linear-gradient(rgba(10,10,10,0.18) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(10,10,10,0.18) 1px, transparent 1px);
+    background-size: 80px 80px;
+    background-position: -1px -1px;
+  }}
+  .main .block-container {{
+    padding-top: 2rem; padding-bottom: 4rem;
+  }}
+  /* 헤더 브랜드 */
   .of-brand {{
-    display: flex; align-items: baseline; gap: 10px;
-    margin-bottom: 2px;
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 6px;
+  }}
+  .of-brand .of-logo-box {{
+    width: 48px; height: 48px; background: {BRAND_RED};
+    border: 3px solid {BRAND_NAVY}; box-shadow: 4px 4px 0 {BRAND_NAVY};
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-family: 'Archivo Black', sans-serif; font-size: 16px;
+    flex-shrink: 0;
   }}
   .of-brand .of-logo {{
-    font-size: 22px; font-weight: 700; color: {BRAND_NAVY_DEEP};
-    letter-spacing: -0.02em;
+    font-family: 'Archivo Black', 'Pretendard', sans-serif;
+    font-size: 26px; color: {BRAND_NAVY}; letter-spacing: -0.02em;
+    line-height: 1.1;
   }}
-  .of-brand .of-logo-accent {{ color: {BRAND_NAVY}; }}
+  .of-brand .of-logo-accent {{ color: {BRAND_RED}; }}
   .of-brand .of-badge {{
-    display: inline-block; background: {BRAND_NAVY_LIGHT};
-    color: {BRAND_NAVY_DEEP}; padding: 2px 8px; border-radius: 6px;
-    font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
-    border: 1px solid #dbeafe;
+    display: inline-block; background: {BRAND_NAVY}; color: {BRAND_NAVY_LIGHT};
+    padding: 6px 12px; border: 3px solid {BRAND_NAVY};
+    box-shadow: 3px 3px 0 {BRAND_RED};
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 10px; letter-spacing: 0.06em;
   }}
   .of-brand-sub {{
-    color: #64748b; font-size: 13px; margin-bottom: 18px;
+    color: {BRAND_NAVY}; font-size: 14px; font-weight: 600;
+    margin-top: 6px; margin-bottom: 16px;
   }}
-  /* GPT 스타일 응답 카드 */
+  .of-version {{
+    font-family: 'Archivo Black', monospace;
+    font-size: 10px; color: #6a6a6a; letter-spacing: 0.08em;
+    margin-bottom: 18px;
+  }}
+  /* GPT 응답 카드 — 검정 BG + 노란 텍스트 + 빨강 그림자 */
   .of-gpt-card {{
-    background: white; border: 1px solid #e2e8f0;
-    border-left: 3px solid {BRAND_NAVY};
-    padding: 18px 20px; border-radius: 12px; margin: 18px 0;
-    font-size: 14.5px; line-height: 1.65; color: #1e293b;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    background: {BRAND_NAVY}; color: {BRAND_NAVY_LIGHT};
+    border: 3px solid {BRAND_NAVY};
+    box-shadow: 8px 8px 0 {BRAND_RED};
+    padding: 22px 26px; margin: 18px 0 26px 0;
+    font-size: 15px; line-height: 1.6;
   }}
   .of-gpt-card .of-gpt-icon {{
     display: inline-flex; align-items: center; justify-content: center;
-    width: 26px; height: 26px; background: {BRAND_NAVY}; color: white;
-    border-radius: 7px; font-size: 11px; font-weight: 700;
-    margin-right: 9px; vertical-align: middle;
-    letter-spacing: 0.02em;
+    width: 30px; height: 30px; background: {BRAND_RED}; color: white;
+    border: 2px solid {BRAND_NAVY_LIGHT};
+    font-family: 'Archivo Black'; font-size: 12px;
+    margin-right: 10px; vertical-align: middle;
   }}
   .of-gpt-card .of-gpt-title {{
-    font-weight: 600; color: #475569; font-size: 11px;
-    text-transform: uppercase; letter-spacing: 0.08em;
+    font-family: 'Archivo Black', sans-serif; color: {BRAND_YELLOW};
+    font-size: 11px; letter-spacing: 0.1em;
     margin-bottom: 10px; display: flex; align-items: center;
   }}
-  /* 모던 메트릭 */
+  .of-gpt-card b {{ color: {BRAND_YELLOW}; font-weight: 800; }}
+  /* 메트릭 카드 — Brutalist */
   div[data-testid="stMetric"] {{
-    background: white; padding: 16px 18px; border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    background: white; padding: 18px 20px;
+    border: 3px solid {BRAND_NAVY}; box-shadow: 5px 5px 0 {BRAND_NAVY};
+    border-radius: 0;
+    transition: all 0.12s ease;
+  }}
+  div[data-testid="stMetric"]:hover {{
+    transform: translate(-2px, -2px);
+    box-shadow: 7px 7px 0 {BRAND_NAVY};
   }}
   div[data-testid="stMetric"] > div:first-child label {{
-    font-size: 11.5px !important; color: #64748b !important;
-    font-weight: 500 !important; text-transform: uppercase;
-    letter-spacing: 0.04em;
+    font-family: 'Archivo Black', sans-serif !important;
+    font-size: 10px !important; color: {BRAND_NAVY} !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase;
   }}
   div[data-testid="stMetric"] [data-testid="stMetricValue"] {{
-    color: {BRAND_NAVY_DEEP}; font-weight: 700; font-size: 22px;
+    font-family: 'Archivo Black', 'Pretendard', sans-serif;
+    color: {BRAND_NAVY}; font-weight: 900; font-size: 36px;
+    letter-spacing: -0.03em;
   }}
   /* primary 버튼 */
   div.stButton > button[kind="primary"] {{
-    background: {BRAND_NAVY}; border: none;
-    font-weight: 600; letter-spacing: 0.01em;
-    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
-    transition: all 0.15s ease;
+    background: {BRAND_NAVY}; color: white;
+    border: 3px solid {BRAND_NAVY};
+    box-shadow: 4px 4px 0 {BRAND_RED};
+    font-family: 'Archivo Black', 'Pretendard', sans-serif;
+    font-weight: 900; letter-spacing: 0.04em;
+    border-radius: 0;
+    transition: all 0.12s ease;
   }}
   div.stButton > button[kind="primary"]:hover {{
-    background: {BRAND_NAVY_DEEP};
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
-    transform: translateY(-1px);
+    background: {BRAND_RED};
+    box-shadow: 6px 6px 0 {BRAND_NAVY};
+    transform: translate(-2px, -2px);
+  }}
+  /* secondary 버튼 */
+  div.stButton > button[kind="secondary"] {{
+    background: white; color: {BRAND_NAVY};
+    border: 3px solid {BRAND_NAVY};
+    box-shadow: 3px 3px 0 {BRAND_NAVY};
+    font-family: 'Archivo Black', 'Pretendard', sans-serif;
+    font-weight: 700; letter-spacing: 0.02em;
+    border-radius: 0;
+  }}
+  div.stButton > button[kind="secondary"]:hover {{
+    background: {BRAND_YELLOW};
+    box-shadow: 5px 5px 0 {BRAND_NAVY};
+    transform: translate(-2px, -2px);
   }}
   /* 사이드바 강조 박스 */
   .of-scope-box {{
-    background: {BRAND_NAVY_LIGHT}; border-radius: 12px;
-    padding: 14px 14px; font-size: 13px; line-height: 1.55;
-    color: {BRAND_NAVY_DEEP}; margin-bottom: 10px;
-    border: 1px solid #dbeafe;
+    background: white; border: 3px solid {BRAND_NAVY};
+    box-shadow: 4px 4px 0 {BRAND_NAVY};
+    padding: 14px; font-size: 13px; line-height: 1.55;
+    color: {BRAND_NAVY}; margin-bottom: 14px;
   }}
   .of-scope-box .of-scope-title {{
-    font-weight: 700; font-size: 11px; letter-spacing: 0.06em;
-    color: {BRAND_NAVY}; margin-bottom: 8px; text-transform: uppercase;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 10px; letter-spacing: 0.08em;
+    color: {BRAND_RED}; margin-bottom: 8px;
   }}
   .of-scope-box .of-scope-num {{
-    font-size: 17px; font-weight: 700; color: {BRAND_NAVY_DEEP};
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 18px; color: {BRAND_NAVY};
   }}
-  /* 검색 입력 박스 */
+  /* 검색 입력 박스 — Brutalist */
   .stTextInput > div > div > input {{
-    font-size: 15px; padding: 12px 16px;
-    border-radius: 10px; border: 1.5px solid #e2e8f0;
-    transition: all 0.15s ease;
+    font-size: 15px; padding: 14px 18px;
+    border-radius: 0; border: 3px solid {BRAND_NAVY};
+    box-shadow: 4px 4px 0 {BRAND_NAVY};
+    background: white; font-weight: 500;
+    transition: all 0.12s ease;
   }}
   .stTextInput > div > div > input:focus {{
-    border-color: {BRAND_NAVY};
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    border-color: {BRAND_RED};
+    box-shadow: 6px 6px 0 {BRAND_RED};
+    outline: none;
   }}
-  /* 배경 톤 살짝 */
-  .main .block-container {{
-    padding-top: 2.4rem; padding-bottom: 4rem;
+  /* 사이드바 BG 흰 */
+  section[data-testid="stSidebar"] {{
+    background: white !important;
+    border-right: 3px solid {BRAND_NAVY};
+  }}
+  /* Expander — Brutalist */
+  div[data-testid="stExpander"] {{
+    border: 3px solid {BRAND_NAVY} !important;
+    box-shadow: 4px 4px 0 {BRAND_NAVY};
+    border-radius: 0 !important;
+    background: white;
+    margin-bottom: 16px;
+  }}
+  /* 컨테이너(border=True) */
+  div[data-testid="stVerticalBlockBorderWrapper"] {{
+    border: 3px solid {BRAND_NAVY} !important;
+    box-shadow: 5px 5px 0 {BRAND_NAVY};
+    border-radius: 0 !important;
+    background: white;
+  }}
+  /* 디바이더 */
+  hr {{ border-top: 3px solid {BRAND_NAVY} !important; }}
+  /* 글꼴 — 큰 타이틀에 Archivo Black */
+  h1, h2, h3 {{
+    font-family: 'Archivo Black', 'Pretendard', sans-serif !important;
+    color: {BRAND_NAVY};
+    letter-spacing: -0.02em;
   }}
 </style>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown(
-        f"<div style='font-size:20px;font-weight:700;color:{BRAND_NAVY_DEEP};"
-        f"letter-spacing:-0.02em;'>🏛️ OneFamily</div>"
-        f"<div style='font-size:12px;color:#6b7280;margin-top:2px;'>실거래가 분석 도구</div>",
+        f"""
+        <div style='display:flex;align-items:center;gap:10px;margin-bottom:4px;'>
+          <div style='width:36px;height:36px;background:{BRAND_RED};
+                      border:3px solid {BRAND_NAVY};box-shadow:3px 3px 0 {BRAND_NAVY};
+                      display:flex;align-items:center;justify-content:center;
+                      color:white;font-family:"Archivo Black";font-size:12px;'>OF</div>
+          <div style='font-family:"Archivo Black";font-size:18px;color:{BRAND_NAVY};
+                      letter-spacing:-0.02em;'>OneFamily</div>
+        </div>
+        <div style='font-size:11px;color:#6a6a6a;margin-top:2px;font-weight:600;
+                    letter-spacing:0.04em;text-transform:uppercase;'>실거래가 분석 도구</div>
+        <div style='font-family:"Archivo Black";font-size:9px;color:#999;
+                    letter-spacing:0.1em;margin-top:6px;'>{APP_VERSION} · {APP_RELEASE_DATE}</div>
+        """,
         unsafe_allow_html=True,
     )
     st.divider()
+    # DB 통계 동적 산출 (캐싱)
+    @st.cache_data(ttl=300)
+    def _db_stats():
+        c = get_conn()
+        n_trades = c.execute("SELECT COUNT(*) FROM trades").fetchone()[0]
+        n_high = c.execute(
+            "SELECT COUNT(*) FROM trades WHERE match_confidence='high'"
+        ).fetchone()[0]
+        n_parcels = c.execute("SELECT COUNT(*) FROM parcels").fetchone()[0]
+        mn = c.execute("SELECT MIN(deal_ymd) FROM trades").fetchone()[0] or "—"
+        mx = c.execute("SELECT MAX(deal_ymd) FROM trades").fetchone()[0] or "—"
+        n_anomaly = c.execute(
+            "SELECT COUNT(*) FROM trades WHERE price_anomaly IS NOT NULL"
+        ).fetchone()[0]
+        return n_trades, n_high, n_parcels, mn[:10], mx[:10], n_anomaly
+
+    n_trades, n_high, n_parcels, mn, mx, n_anom = _db_stats()
     st.markdown(
         f"""
         <div class="of-scope-box">
           <div class="of-scope-title">검색 대상 DB</div>
-          <div style="margin-bottom:4px;">📍 <b>용인 처인구 백암면 · 원삼면</b></div>
-          <div style="font-size:12px;color:#475569;">
-            기간: 2021-01-06 ~ 2026-05-20<br>
-            토지 거래 <span class="of-scope-num">7,442</span>건
-            (매칭 <b>2,232</b>건)<br>
-            필지 <span class="of-scope-num">68,393</span>개<br>
-            데이터 출처: 국토부 · V-World · SRTM 30m
+          <div style="margin-bottom:6px;font-size:14px;">📍 <b>용인 처인구 전체 17개 읍·면·동</b></div>
+          <div style="font-size:12px;color:{BRAND_NAVY};line-height:1.65;">
+            기간: {mn} ~ {mx}<br>
+            토지 거래 <span class="of-scope-num">{n_trades:,}</span>건
+            (매칭 <b>{n_high:,}</b>건 · 이상치 <b>{n_anom:,}</b>)<br>
+            필지 <span class="of-scope-num">{n_parcels:,}</span>개<br>
+            <span style="font-size:10.5px;opacity:0.7;">국토부 · V-World · SRTM 30m</span>
           </div>
         </div>
         """,
@@ -982,15 +1112,19 @@ with st.sidebar:
         if tbl_state is not None:
             st.caption(f"of_trades_table.selection: `{tbl_state}`")
 
-# 간결한 헤더 — 로고 + 부제만
+# Brutalist 헤더 — 빨간 로고 박스 + 큰 타이포 + 작은 버전·발행일
 st.markdown(
     f"""
     <div class="of-brand">
-      <div class="of-logo">One<span class="of-logo-accent">Family</span> 실거래가</div>
-      <span class="of-badge">용인 처인구 · 백암 / 원삼 테스트</span>
+      <div class="of-logo-box">OF</div>
+      <div>
+        <div class="of-logo">One<span class="of-logo-accent">Family</span> 실거래가</div>
+      </div>
+      <span class="of-badge">용인 처인구 · 전체 17개 읍·면·동</span>
     </div>
     <div class="of-brand-sub">자연어 한 줄로 토지 실거래를 분석합니다</div>
-    <div style="font-size:12.5px;color:#64748b;margin-bottom:12px;line-height:1.7;">
+    <div class="of-version">{APP_VERSION} · 발행 {APP_RELEASE_DATE}</div>
+    <div style="font-size:12.5px;color:#0a0a0a;margin-bottom:14px;line-height:1.7;font-weight:500;">
       예시 · "원삼면 임야 평당 100 미만 최근 1년"
       &nbsp;·&nbsp; "지방도318 반경 5km 1억 이하"
       &nbsp;·&nbsp; "두창리 957-5와 비슷한 조건"
@@ -1158,8 +1292,10 @@ if "result" in st.session_state:
     results = result["results"]
 
     if result["out_of_range"]:
-        st.warning("⚠️ 테스트 버전은 **백암면 · 원삼면** 만 검색 가능. "
-                   "그 외 지역은 무시.")
+        st.warning(
+            "⚠️ 검색 가능 지역은 **용인 처인구**(17개 읍·면·동)입니다. "
+            "그 외 지역은 무시됨. 기흥구·수지구는 곧 추가 예정."
+        )
 
     # GPT 스타일 응답 카드 — 검색 의도 자연어 풀이 + 항목 칩
     sentence, chips = format_cond_as_sentence(cond, result)
@@ -1297,30 +1433,82 @@ if "result" in st.session_state:
             sub_bits.append(f"거래 **{len(sel_trades2)}건** 매칭")
             st.caption(" · ".join(sub_bits))
 
-            # 필지 기본 정보 6 메트릭
-            info_cols = st.columns(3)
-            info_cols[0].metric(
-                "공시지가",
-                f"{int(sel_parcel2['jiga']):,}원/㎡" if sel_parcel2['jiga'] else "—",
+            # ━━━ 실거래 핵심 정보 (메인) ━━━
+            unit_prices = [t["unit_per_pyeong"] for t in sel_trades2
+                          if t["unit_per_pyeong"]]
+            deal_amounts = [t["deal_amount"] for t in sel_trades2
+                           if t["deal_amount"]]
+            latest = sel_trades2[0] if sel_trades2 else None  # 최신순 정렬됨
+
+            st.markdown(
+                f"<div style='margin-top:14px;font-family:\"Archivo Black\",sans-serif;"
+                f"font-size:11px;color:{BRAND_RED};letter-spacing:0.08em;"
+                f"margin-bottom:6px;'>실거래 정보 · DEAL HISTORY</div>",
+                unsafe_allow_html=True,
             )
-            info_cols[1].metric(
+            deal_cols = st.columns(3)
+            deal_cols[0].metric(
+                "최근 거래가",
+                f"{latest['deal_amount']:,} 만원" if latest else "—",
+                help=(f"{latest['deal_ymd'][:10]} 거래" if latest else None),
+            )
+            if unit_prices:
+                median_unit = statistics.median(unit_prices)
+                deal_cols[1].metric(
+                    "평단가 (중앙)",
+                    f"{median_unit:,.0f} 만/평",
+                    help=(f"{len(unit_prices)}건 기준  "
+                          f"({min(unit_prices):,.0f}~{max(unit_prices):,.0f})"),
+                )
+            else:
+                deal_cols[1].metric("평단가 (중앙)", "—")
+            deal_cols[2].metric(
+                "거래 건수",
+                f"{len(sel_trades2)} 건",
+                help=(f"최근: {latest['deal_ymd'][:10]}" if latest else None),
+            )
+
+            # ━━━ 입지 (보조) ━━━
+            st.markdown(
+                f"<div style='margin-top:18px;font-family:\"Archivo Black\",sans-serif;"
+                f"font-size:11px;color:{BRAND_RED};letter-spacing:0.08em;"
+                f"margin-bottom:6px;'>입지 · LOCATION</div>",
+                unsafe_allow_html=True,
+            )
+            loc_cols = st.columns(3)
+            loc_cols[0].metric(
                 "해발",
                 f"{sel_parcel2['elevation_m']:.0f}m"
                 if sel_parcel2["elevation_m"] is not None else "—",
             )
-            info_cols[2].metric(
+            loc_cols[1].metric(
                 "경사",
                 f"{sel_parcel2['slope_deg']:.1f}°"
                 if sel_parcel2["slope_deg"] is not None else "—",
             )
-            info_cols2 = st.columns(3)
-            info_cols2[0].metric(
+            loc_cols[2].metric(
                 "도로 접면",
                 "접면" if sel_parcel2["has_road_access"] == 1
                 else ("맹지" if sel_parcel2["has_road_access"] == 0 else "—"),
             )
-            info_cols2[1].metric("형상", sel_parcel2["shape_type"] or "—")
-            info_cols2[2].metric("용도지역", sel_parcel2["zone_type"] or "—")
+
+            # ━━━ 필지 속성 (작게, 보조) ━━━
+            jiga_text = (f"{int(sel_parcel2['jiga']):,}원/㎡"
+                         if sel_parcel2['jiga'] else "—")
+            attr_bits = [
+                f"공시지가 <b>{jiga_text}</b>",
+                f"형상 <b>{sel_parcel2['shape_type'] or '—'}</b>",
+                f"용도지역 <b>{sel_parcel2['zone_type'] or '—'}</b>",
+            ]
+            st.markdown(
+                f"<div style='margin-top:14px;padding:10px 14px;"
+                f"background:#fef3c7;border:2px solid {BRAND_NAVY};"
+                f"font-size:12.5px;color:{BRAND_NAVY};'>"
+                f"📐 필지 속성 · "
+                + " &nbsp;·&nbsp; ".join(attr_bits)
+                + "</div>",
+                unsafe_allow_html=True,
+            )
 
             # 형상 의심 경고 — 매우 길쭉한 작은 임야는 V-World가 임야로 분류해도
             # 실제 도로/구거일 가능성이 있음 (J 같은 권리분석자에게 중요한 신호)

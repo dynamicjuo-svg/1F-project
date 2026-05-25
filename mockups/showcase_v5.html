@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneFamily 실거래가 — V5 (완전 새 방향 5종)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800;900&family=Pretendard:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700;900&family=Hahmlet:wght@400;500;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: #0a0a0a; overflow: hidden; -webkit-font-smoothing: antialiased; font-family: 'Pretendard', sans-serif; }
+  .showcase { display: grid; grid-template-columns: 280px 1fr; height: 100vh; }
+  .sc-side {
+    background: #0f172a; color: white; padding: 24px 16px;
+    overflow-y: auto;
+  }
+  .sc-side h1 { font-size: 16px; margin-bottom: 4px; letter-spacing: -0.02em; }
+  .sc-side .sub { font-size: 11px; color: #94a3b8; margin-bottom: 20px; }
+  .sc-btn {
+    display: block; width: 100%; padding: 14px;
+    margin-bottom: 10px; background: #1e293b; color: #cbd5e1;
+    border: 1px solid transparent; border-radius: 10px;
+    cursor: pointer; text-align: left; font-family: 'Pretendard';
+    transition: all 0.2s ease;
+  }
+  .sc-btn:hover { background: #334155; color: white; transform: translateX(2px); }
+  .sc-btn.active { background: linear-gradient(135deg, #ec4899, #f59e0b); color: white; border-color: rgba(255,255,255,0.2); box-shadow: 0 4px 14px rgba(236,72,153,0.4); }
+  .sc-btn .num { font-size: 11px; opacity: 0.7; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
+  .sc-btn .name { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .sc-btn .desc { font-size: 11px; opacity: 0.6; margin-top: 4px; line-height: 1.4; }
+  .sc-side .footer { margin-top: 24px; padding-top: 20px; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b; line-height: 1.6; }
+  .sc-main { overflow-y: auto; }
+  .mockup { display: none; min-height: 100vh; }
+  .mockup.active { display: block; animation: fadein 0.4s ease; }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ============================================================
+   *  시안 16 — Brutalist Bold
+   * ============================================================ */
+  .mockup-16 {
+    background: #fef3c7; color: #0a0a0a;
+    font-family: 'Pretendard', sans-serif;
+    background-image:
+      linear-gradient(rgba(10,10,10,0.18) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(10,10,10,0.18) 1px, transparent 1px);
+    background-size: 80px 80px;
+    background-position: -1px -1px;
+    background-color: #fef3c7;
+  }
+  .m16-bg-wrap { background: #fef3c7; background-image: repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(0,0,0,0.04) 79px, rgba(0,0,0,0.04) 80px), repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(0,0,0,0.04) 79px, rgba(0,0,0,0.04) 80px); }
+  .mockup-16 .nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 28px 48px; border-bottom: 4px solid #0a0a0a;
+    background: #fef3c7;
+  }
+  .mockup-16 .logo { display: flex; align-items: center; gap: 12px; font-family: 'Archivo Black', sans-serif; font-size: 22px; letter-spacing: -0.02em; }
+  .mockup-16 .logo-box {
+    width: 44px; height: 44px; background: #dc2626;
+    border: 3px solid #0a0a0a; box-shadow: 4px 4px 0 #0a0a0a;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-family: 'Archivo Black'; font-size: 16px;
+  }
+  .m16-tag {
+    background: #0a0a0a; color: #fef3c7; padding: 8px 14px;
+    font-family: 'Archivo Black'; font-size: 11px; letter-spacing: 0.08em;
+    border: 3px solid #0a0a0a; box-shadow: 4px 4px 0 #dc2626;
+  }
+  .m16-hero { padding: 80px 48px 60px; max-width: 1100px; }
+  .m16-eyebrow {
+    display: inline-block; padding: 8px 16px;
+    background: #dc2626; color: white;
+    border: 3px solid #0a0a0a; box-shadow: 5px 5px 0 #0a0a0a;
+    font-family: 'Archivo Black'; font-size: 12px;
+    letter-spacing: 0.08em; margin-bottom: 28px; transform: rotate(-1.5deg);
+  }
+  .m16-hero h1 {
+    font-family: 'Archivo Black', 'Noto Sans KR', sans-serif; font-weight: 900;
+    font-size: 96px; line-height: 0.95; letter-spacing: -0.04em; margin-bottom: 28px;
+  }
+  .m16-hero h1 .hl { background: #dc2626; color: white; padding: 0 12px; display: inline-block; }
+  .m16-hero h1 .strike { text-decoration: underline; text-decoration-thickness: 6px; text-underline-offset: -2px; text-decoration-color: #dc2626; }
+  .m16-hero p { font-size: 20px; line-height: 1.45; margin-bottom: 36px; max-width: 700px; font-weight: 500; }
+  .m16-search {
+    background: white; border: 4px solid #0a0a0a; box-shadow: 8px 8px 0 #0a0a0a;
+    display: flex; gap: 0; max-width: 720px;
+  }
+  .m16-search input { flex: 1; padding: 18px 22px; border: none; outline: none; font-size: 16px; font-family: 'Pretendard'; font-weight: 500; }
+  .m16-search button {
+    padding: 18px 28px; background: #0a0a0a; color: white;
+    border: none; font-family: 'Archivo Black'; font-size: 14px; letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+  .m16-cards { padding: 0 48px 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  .m16-card {
+    background: white; border: 4px solid #0a0a0a; box-shadow: 6px 6px 0 #0a0a0a;
+    padding: 22px; transition: all 0.15s;
+  }
+  .m16-card:hover { transform: translate(-3px, -3px); box-shadow: 9px 9px 0 #0a0a0a; }
+  .m16-card .label { font-family: 'Archivo Black'; font-size: 11px; letter-spacing: 0.08em; }
+  .m16-card .val { font-family: 'Archivo Black'; font-size: 48px; margin-top: 8px; letter-spacing: -0.03em; }
+  .m16-card .sub { font-size: 12px; font-weight: 600; margin-top: 4px; color: #555; }
+  .m16-card.accent { background: #dc2626; color: white; }
+  .m16-card.accent .sub { color: rgba(255,255,255,0.85); }
+  .m16-section { padding: 0 48px 64px; }
+  .m16-block {
+    background: #0a0a0a; color: #fef3c7;
+    border: 4px solid #0a0a0a; box-shadow: 8px 8px 0 #dc2626;
+    padding: 28px;
+  }
+  .m16-block .title { font-family: 'Archivo Black'; font-size: 13px; letter-spacing: 0.1em; margin-bottom: 14px; color: #fbbf24; }
+  .m16-block .body { font-size: 17px; line-height: 1.5; font-weight: 500; }
+
+  /* ============================================================
+   *  시안 17 — Swiss Minimal
+   * ============================================================ */
+  .mockup-17 {
+    background: white; color: #0a0a0a;
+    font-family: 'Inter', 'Pretendard', sans-serif;
+  }
+  .m17-nav { padding: 32px 64px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #0a0a0a; }
+  .m17-logo { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+  .m17-meta { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #0a0a0a; }
+  .m17-meta .red { color: #dc2626; font-weight: 600; }
+  .m17-hero { padding: 96px 64px 72px; max-width: 1080px; }
+  .m17-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 64px; margin-bottom: 56px; }
+  .m17-left { padding-top: 8px; }
+  .m17-eyebrow { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600; }
+  .m17-line { width: 40px; height: 2px; background: #dc2626; margin: 16px 0; }
+  .m17-meta-small { font-size: 12px; color: #6a6a6a; line-height: 1.6; }
+  .m17-meta-small b { color: #0a0a0a; }
+  .m17-hero h1 {
+    font-family: 'Inter', sans-serif; font-weight: 800;
+    font-size: 108px; line-height: 0.95; letter-spacing: -0.05em;
+    margin-bottom: 0;
+  }
+  .m17-hero h1 .red { color: #dc2626; }
+  .m17-hero h1 .thin { font-weight: 300; }
+  .m17-hero p {
+    font-size: 20px; line-height: 1.5; margin-top: 32px;
+    max-width: 720px; font-weight: 400; color: #2a2a2a;
+  }
+  .m17-search {
+    margin-top: 48px;
+    border: 1px solid #0a0a0a; display: flex; max-width: 720px;
+  }
+  .m17-search input { flex: 1; padding: 22px 24px; border: none; outline: none; font-size: 16px; font-family: 'Inter'; }
+  .m17-search button {
+    padding: 22px 36px; background: #0a0a0a; color: white;
+    border: none; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; cursor: pointer;
+    text-transform: uppercase;
+  }
+  .m17-cards { padding: 0 64px 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-top: 1px solid #0a0a0a; border-bottom: 1px solid #0a0a0a; }
+  .m17-card { padding: 32px 28px; border-right: 1px solid #e0e0e0; }
+  .m17-card:last-child { border-right: none; }
+  .m17-card .idx { font-size: 11px; letter-spacing: 0.12em; color: #999; font-weight: 600; }
+  .m17-card .label { font-size: 12px; letter-spacing: 0.04em; margin-top: 8px; font-weight: 600; }
+  .m17-card .val { font-family: 'Inter'; font-weight: 800; font-size: 56px; letter-spacing: -0.04em; margin-top: 14px; line-height: 1; }
+  .m17-card .val .unit { font-size: 16px; font-weight: 500; color: #6a6a6a; }
+  .m17-card .sub { font-size: 12px; color: #6a6a6a; margin-top: 8px; }
+  .m17-card.accent .val { color: #dc2626; }
+  .m17-section { padding: 56px 64px 96px; max-width: 1080px; }
+  .m17-section h3 { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600; margin-bottom: 24px; }
+  .m17-section h3 .red { color: #dc2626; }
+  .m17-section p { font-size: 22px; line-height: 1.5; max-width: 800px; font-weight: 400; letter-spacing: -0.01em; }
+  .m17-section p b { font-weight: 700; }
+
+  /* ============================================================
+   *  시안 18 — Neo Memphis
+   * ============================================================ */
+  .mockup-18 {
+    background: #fef3c7; color: #0a0a0a;
+    font-family: 'Pretendard', sans-serif;
+    position: relative; overflow: hidden;
+  }
+  .m18-shapes {
+    position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      radial-gradient(circle at 90% 12%, #ec4899 0px, #ec4899 80px, transparent 81px),
+      radial-gradient(circle at 8% 60%, #06b6d4 0px, #06b6d4 60px, transparent 61px);
+  }
+  .m18-zigzag {
+    position: absolute; top: 200px; right: -20px; transform: rotate(15deg); z-index: 0;
+  }
+  .mockup-18 > * { position: relative; z-index: 1; }
+  .m18-nav { display: flex; justify-content: space-between; padding: 28px 48px; align-items: center; }
+  .m18-logo { display: flex; gap: 12px; align-items: center; }
+  .m18-logo-mark {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #ec4899, #fbbf24);
+    border-radius: 22px 6px 22px 6px;
+    border: 3px solid #0a0a0a;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 900; font-size: 14px;
+    transform: rotate(-5deg);
+  }
+  .m18-logo .name { font-weight: 900; font-size: 20px; letter-spacing: -0.02em; }
+  .m18-hero { padding: 60px 48px 50px; max-width: 1000px; }
+  .m18-eyebrow {
+    display: inline-block; padding: 8px 16px;
+    background: #06b6d4; color: white;
+    font-weight: 800; font-size: 11px; letter-spacing: 0.08em;
+    border: 3px solid #0a0a0a; border-radius: 999px;
+    margin-bottom: 28px; transform: rotate(-2deg);
+  }
+  .m18-hero h1 {
+    font-family: 'Pretendard'; font-weight: 900;
+    font-size: 84px; line-height: 1.0; letter-spacing: -0.05em;
+    margin-bottom: 28px;
+  }
+  .m18-hero h1 .pink {
+    display: inline-block; background: #ec4899; color: white;
+    padding: 4px 16px; border: 4px solid #0a0a0a;
+    transform: rotate(-1deg);
+  }
+  .m18-hero h1 .cyan {
+    color: #06b6d4; text-decoration: underline; text-decoration-thickness: 8px;
+    text-underline-offset: 4px; text-decoration-color: #fbbf24;
+  }
+  .m18-hero p { font-size: 19px; line-height: 1.5; max-width: 640px; margin-bottom: 36px; font-weight: 500; }
+  .m18-search {
+    background: white; border: 4px solid #0a0a0a;
+    box-shadow: 8px 8px 0 #ec4899; max-width: 720px;
+    display: flex; border-radius: 14px; overflow: hidden;
+  }
+  .m18-search input { flex: 1; padding: 18px 22px; border: none; outline: none; font-size: 16px; font-family: 'Pretendard'; font-weight: 500; }
+  .m18-search button {
+    padding: 18px 28px; background: #fbbf24; color: #0a0a0a;
+    border: none; border-left: 4px solid #0a0a0a;
+    font-weight: 900; font-size: 14px; letter-spacing: 0.06em; cursor: pointer;
+  }
+  .m18-cards { padding: 32px 48px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .m18-card {
+    background: white; border: 4px solid #0a0a0a; padding: 22px;
+    box-shadow: 6px 6px 0 #0a0a0a; transition: all 0.15s;
+    border-radius: 16px;
+  }
+  .m18-card:hover { transform: translate(-3px, -3px); box-shadow: 9px 9px 0 #0a0a0a; }
+  .m18-card.pink { background: #ec4899; color: white; box-shadow: 6px 6px 0 #0a0a0a; }
+  .m18-card.cyan { background: #06b6d4; color: white; box-shadow: 6px 6px 0 #0a0a0a; }
+  .m18-card.yellow { background: #fbbf24; color: #0a0a0a; box-shadow: 6px 6px 0 #0a0a0a; }
+  .m18-card .label { font-size: 11px; letter-spacing: 0.06em; font-weight: 800; text-transform: uppercase; }
+  .m18-card .val { font-size: 42px; font-weight: 900; margin-top: 8px; letter-spacing: -0.03em; }
+  .m18-card .sub { font-size: 12px; margin-top: 4px; opacity: 0.85; font-weight: 600; }
+  .m18-section { padding: 0 48px 64px; }
+  .m18-block {
+    background: white; border: 4px solid #0a0a0a; padding: 28px;
+    box-shadow: 10px 10px 0 #06b6d4; border-radius: 18px;
+  }
+  .m18-block .title { font-weight: 900; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: #ec4899; margin-bottom: 12px; }
+  .m18-block .body { font-size: 16px; line-height: 1.6; font-weight: 500; }
+
+  /* ============================================================
+   *  시안 19 — Bloomberg Financial
+   * ============================================================ */
+  .mockup-19 {
+    background: #1a1a1a; color: #e5e5e5;
+    font-family: 'Inter', sans-serif; min-height: 100vh;
+  }
+  .m19-nav {
+    padding: 14px 32px; display: flex; justify-content: space-between; align-items: center;
+    background: #0a0a0a; border-bottom: 2px solid #dc2626;
+  }
+  .m19-logo {
+    display: flex; align-items: center; gap: 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700;
+  }
+  .m19-logo .badge { background: #dc2626; color: white; padding: 3px 9px; font-size: 11px; letter-spacing: 0.06em; }
+  .m19-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #999; letter-spacing: 0.08em; }
+  .m19-meta .live { color: #10b981; }
+  .m19-meta .live::before { content: '●'; margin-right: 6px; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .m19-ticker {
+    background: #0a0a0a; border-bottom: 1px solid #2e2e2e;
+    padding: 8px 0; overflow: hidden; white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  }
+  .m19-ticker .item { display: inline-block; padding: 0 24px; }
+  .m19-ticker .up { color: #10b981; }
+  .m19-ticker .down { color: #dc2626; }
+  .m19-hero { padding: 56px 32px 32px; }
+  .m19-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #dc2626; letter-spacing: 0.12em; margin-bottom: 20px; }
+  .m19-hero h1 {
+    font-family: 'Inter'; font-weight: 800;
+    font-size: 56px; line-height: 1.08; letter-spacing: -0.03em; margin-bottom: 16px; color: white;
+  }
+  .m19-hero h1 .red { color: #dc2626; }
+  .m19-hero p { font-size: 16px; color: #a3a3a3; line-height: 1.55; margin-bottom: 28px; max-width: 700px; }
+  .m19-search { background: #0a0a0a; border: 1px solid #2e2e2e; display: flex; max-width: 720px; }
+  .m19-search input { flex: 1; padding: 14px 18px; background: transparent; border: none; outline: none; color: white; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+  .m19-search input::placeholder { color: #525252; }
+  .m19-search button { padding: 14px 24px; background: #dc2626; color: white; border: none; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; cursor: pointer; }
+  .m19-grid { padding: 0 32px 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #2e2e2e; border: 1px solid #2e2e2e; }
+  .m19-stat { background: #0a0a0a; padding: 18px 20px; }
+  .m19-stat .head { display: flex; justify-content: space-between; }
+  .m19-stat .label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #999; letter-spacing: 0.06em; }
+  .m19-stat .delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #10b981; font-weight: 700; }
+  .m19-stat .delta.alert { color: #dc2626; }
+  .m19-stat .val { font-family: 'Inter'; font-weight: 800; font-size: 32px; color: white; margin-top: 10px; letter-spacing: -0.02em; }
+  .m19-stat .val .unit { font-size: 13px; color: #737373; font-weight: 500; }
+  .m19-stat .bar {
+    margin-top: 10px; height: 4px;
+    background: linear-gradient(90deg, #dc2626 0%, #dc2626 var(--p,60%), #2e2e2e var(--p,60%));
+  }
+  .m19-stat .meta {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: #737373; margin-top: 8px; display: flex; justify-content: space-between;
+  }
+  .m19-section { padding: 0 32px 32px; }
+  .m19-section .title {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: #dc2626; letter-spacing: 0.12em; margin-bottom: 14px;
+    padding-bottom: 8px; border-bottom: 1px solid #2e2e2e;
+  }
+  .m19-block { background: #0a0a0a; border: 1px solid #2e2e2e; padding: 22px; font-size: 14px; line-height: 1.55; color: #d4d4d4; }
+
+  /* ============================================================
+   *  시안 20 — Soft Pastel Organic
+   * ============================================================ */
+  .mockup-20 {
+    background: #fefce8;
+    background-image:
+      radial-gradient(circle at 80% 5%, #fbcfe8 0%, transparent 25%),
+      radial-gradient(circle at 5% 70%, #bbf7d0 0%, transparent 25%),
+      radial-gradient(circle at 95% 80%, #c7d2fe 0%, transparent 25%);
+    color: #1f2937; font-family: 'Pretendard', sans-serif;
+    min-height: 100vh; position: relative;
+  }
+  .m20-nav { padding: 28px 48px; display: flex; justify-content: space-between; align-items: center; }
+  .m20-logo { display: flex; align-items: center; gap: 12px; }
+  .m20-logo-mark {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #c4b5fd, #fbcfe8);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(196,181,253,0.4);
+  }
+  .m20-logo .name { font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
+  .m20-tag { font-size: 12px; color: #6b7280; }
+  .m20-hero { padding: 40px 48px 32px; max-width: 1050px; display: grid; grid-template-columns: 3fr 2fr; gap: 32px; align-items: center; }
+  .m20-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px;
+    background: white; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  }
+  .m20-eyebrow .emoji { font-size: 16px; }
+  .m20-hero h1 {
+    font-family: 'Hahmlet', 'Pretendard', serif;
+    font-weight: 700; font-size: 56px; line-height: 1.15;
+    letter-spacing: -0.03em; margin-bottom: 18px;
+  }
+  .m20-hero h1 .hand {
+    font-family: 'Caveat', cursive; font-weight: 700;
+    color: #ec4899; transform: rotate(-2deg); display: inline-block;
+    font-size: 1.1em;
+  }
+  .m20-hero h1 .underline {
+    background-image: linear-gradient(transparent 70%, #fde68a 70%);
+    padding: 0 4px;
+  }
+  .m20-hero p { font-size: 17px; line-height: 1.65; color: #4b5563; margin-bottom: 28px; max-width: 540px; }
+  .m20-search {
+    background: white; border-radius: 999px; padding: 6px;
+    display: flex; gap: 6px; align-items: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+    max-width: 640px;
+  }
+  .m20-search input { flex: 1; border: none; padding: 14px 22px; font-size: 15px; outline: none; background: transparent; font-family: inherit; }
+  .m20-search button {
+    padding: 14px 26px; background: linear-gradient(135deg, #c4b5fd, #fbcfe8);
+    color: #6b21a8; border: none; border-radius: 999px;
+    font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .m20-illust { display: flex; align-items: center; justify-content: center; }
+  .m20-illust svg { width: 100%; max-width: 360px; height: auto; }
+  .m20-cards { padding: 0 48px 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .m20-card {
+    background: white; padding: 24px; border-radius: 24px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    transition: all 0.3s;
+    border: 1px solid rgba(0,0,0,0.04);
+  }
+  .m20-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+  .m20-card .emoji {
+    width: 44px; height: 44px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 12px;
+  }
+  .m20-card.c1 .emoji { background: #fef3c7; }
+  .m20-card.c2 .emoji { background: #dcfce7; }
+  .m20-card.c3 .emoji { background: #ede9fe; }
+  .m20-card.c4 .emoji { background: #fce7f3; }
+  .m20-card .label { font-size: 12px; color: #6b7280; font-weight: 500; }
+  .m20-card .val { font-size: 32px; font-weight: 800; margin-top: 6px; letter-spacing: -0.02em; color: #1f2937; }
+  .m20-card .val .unit { font-size: 13px; color: #9ca3af; font-weight: 500; }
+  .m20-card .sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .m20-section { padding: 0 48px 64px; }
+  .m20-block {
+    background: white; padding: 28px; border-radius: 24px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+  .m20-block .title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; font-weight: 700; color: #6b21a8;
+    margin-bottom: 12px;
+  }
+  .m20-block .title .dot { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #c4b5fd, #fbcfe8); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .m20-block .body { font-size: 16px; line-height: 1.7; color: #1f2937; }
+
+</style>
+</head>
+<body>
+<div class="showcase">
+  <aside class="sc-side">
+    <h1>🆕 V5 · 새 방향 5종</h1>
+    <div class="sub">이전과 완전히 다른 톤</div>
+
+    <button class="sc-btn active" data-mockup="16">
+      <div class="num">16</div>
+      <div class="name">Brutalist Bold</div>
+      <div class="desc">굵은 보더 + 오프셋 그림자 + 노랑·빨강</div>
+    </button>
+    <button class="sc-btn" data-mockup="17">
+      <div class="num">17</div>
+      <div class="name">Swiss Minimal</div>
+      <div class="desc">순백 + 큰 타이포 + 빨간 한 점</div>
+    </button>
+    <button class="sc-btn" data-mockup="18">
+      <div class="num">18</div>
+      <div class="name">Neo Memphis</div>
+      <div class="desc">핑크·사이안·노랑 + 비대칭 도형</div>
+    </button>
+    <button class="sc-btn" data-mockup="19">
+      <div class="num">19</div>
+      <div class="name">Bloomberg Financial</div>
+      <div class="desc">다크 + 빨강 + 데이터 밀도 高</div>
+    </button>
+    <button class="sc-btn" data-mockup="20">
+      <div class="num">20</div>
+      <div class="name">Soft Pastel Organic</div>
+      <div class="desc">파스텔 + 손그림 + 친근</div>
+    </button>
+
+    <div class="footer">
+      클릭으로 시안 전환.<br>
+      마음에 드는 시안 알려주면<br>
+      app.py에 즉시 통합.
+    </div>
+  </aside>
+
+  <main class="sc-main">
+
+    <!-- ============== 시안 16: Brutalist Bold ============== -->
+    <section class="mockup mockup-16 active">
+      <div class="nav">
+        <div class="logo"><div class="logo-box">OF</div> OneFamily 실거래가</div>
+        <div class="m16-tag">EST. 2026 · 권리분석 도구</div>
+      </div>
+      <div class="m16-hero">
+        <span class="m16-eyebrow">FOR PROFESSIONALS ONLY</span>
+        <h1>땅을 <span class="hl">묻다,</span><br>데이터로 <span class="strike">답하다.</span></h1>
+        <p>자연어 한 줄로 7,442건의 실거래를 분석합니다. 매칭·시세·이상치·매물 검증을 한 화면에서.</p>
+        <div class="m16-search">
+          <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+          <button>분석 →</button>
+        </div>
+      </div>
+      <div class="m16-cards">
+        <div class="m16-card"><div class="label">TRADES</div><div class="val">7,442</div><div class="sub">매칭 high 14,691</div></div>
+        <div class="m16-card"><div class="label">SAMPLE</div><div class="val">40</div><div class="sub">high · 단독</div></div>
+        <div class="m16-card"><div class="label">MEDIAN</div><div class="val">42<span style="font-size:18px;"> 만/평</span></div><div class="sub">원삼면 임야 1년</div></div>
+        <div class="m16-card accent"><div class="label">ANOMALY</div><div class="val">942</div><div class="sub">🔥892 · ❄️50</div></div>
+      </div>
+      <div class="m16-section">
+        <div class="m16-block">
+          <div class="title">// PARSED INTENT</div>
+          <div class="body"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b style="color:#fbbf24;">84건</b> 매칭.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 시안 17: Swiss Minimal ============== -->
+    <section class="mockup mockup-17">
+      <div class="m17-nav">
+        <div class="m17-logo">OneFamily 실거래가</div>
+        <div class="m17-meta"><span class="red">●</span> LIVE · 2026 / EDITION 02</div>
+      </div>
+      <div class="m17-hero">
+        <div class="m17-grid">
+          <div class="m17-left">
+            <div class="m17-eyebrow">01 — Land Intelligence</div>
+            <div class="m17-line"></div>
+            <div class="m17-meta-small">
+              <b>About</b><br>자연어 한 줄로 토지를 분석하는 권리분석 정밀 도구.<br><br>
+              <b>Coverage</b><br>처인구 · 백암 / 원삼<br>거래 7,442건 · 필지 68,393<br><br>
+              <b>Version</b><br>v2.0 · 2026-05
+            </div>
+          </div>
+          <div>
+            <h1>땅을<br><span class="thin">묻는</span><br>가장 정확한<br><span class="red">방법.</span></h1>
+          </div>
+        </div>
+        <p>매칭 정확도 · 시세 이상치 자동 감지 · 매물 교차 검증. 권리분석에 필요한 모든 데이터를 한 화면에서.</p>
+        <div class="m17-search">
+          <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+          <button>SEARCH</button>
+        </div>
+      </div>
+      <div class="m17-cards">
+        <div class="m17-card"><div class="idx">01</div><div class="label">전체 거래</div><div class="val">7,442</div><div class="sub">매칭 high 14,691</div></div>
+        <div class="m17-card"><div class="idx">02</div><div class="label">정상 시세 표본</div><div class="val">40</div><div class="sub">high · 단독</div></div>
+        <div class="m17-card"><div class="idx">03</div><div class="label">평단가 중앙값</div><div class="val">42<span class="unit"> 만/평</span></div><div class="sub">원삼면 임야 1년</div></div>
+        <div class="m17-card accent"><div class="idx">04</div><div class="label">이상치 감지</div><div class="val">942</div><div class="sub">🔥892 · ❄️50</div></div>
+      </div>
+      <div class="m17-section">
+        <h3>02 — <span class="red">검색 의도</span></h3>
+        <p><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b>84건</b> 매칭.</p>
+      </div>
+    </section>
+
+    <!-- ============== 시안 18: Neo Memphis ============== -->
+    <section class="mockup mockup-18">
+      <div class="m18-shapes"></div>
+      <svg class="m18-zigzag" width="220" height="60" viewBox="0 0 220 60">
+        <polyline points="0,30 30,10 60,30 90,10 120,30 150,10 180,30 210,10" fill="none" stroke="#fbbf24" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="m18-nav">
+        <div class="m18-logo">
+          <div class="m18-logo-mark">OF</div>
+          <div class="name">OneFamily 실거래가</div>
+        </div>
+        <div style="font-size:13px;font-weight:700;">권리분석 · 2026</div>
+      </div>
+      <div class="m18-hero">
+        <span class="m18-eyebrow">💎 자연어 토지 분석 ✦ NEW</span>
+        <h1>한 줄로 묻고,<br><span class="pink">정밀하게</span> <span class="cyan">답을 얻다</span></h1>
+        <p>매칭, 시세, 이상치, 매물 검증까지 — 권리분석의 모든 답이 한 화면에 모입니다.</p>
+        <div class="m18-search">
+          <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+          <button>분석 GO!</button>
+        </div>
+      </div>
+      <div class="m18-cards">
+        <div class="m18-card"><div class="label">전체 거래</div><div class="val">7,442</div><div class="sub">매칭 high 14,691</div></div>
+        <div class="m18-card cyan"><div class="label">시세 표본</div><div class="val">40</div><div class="sub">high · 단독</div></div>
+        <div class="m18-card yellow"><div class="label">평단가 중앙값</div><div class="val">42<span style="font-size:18px;"> 만/평</span></div><div class="sub">원삼면 임야 1년</div></div>
+        <div class="m18-card pink"><div class="label">이상치 감지</div><div class="val">942</div><div class="sub">🔥892 · ❄️50</div></div>
+      </div>
+      <div class="m18-section">
+        <div class="m18-block">
+          <div class="title">✦ OneFamily 검색 의도</div>
+          <div class="body"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b style="color:#ec4899;">84건</b> 매칭.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 시안 19: Bloomberg Financial ============== -->
+    <section class="mockup mockup-19">
+      <div class="m19-nav">
+        <div class="m19-logo"><span class="badge">OF</span> ONEFAMILY · LAND TERMINAL</div>
+        <div class="m19-meta"><span class="live">LIVE</span> · 2026-05-25 11:48 KST · v2.0</div>
+      </div>
+      <div class="m19-ticker">
+        <span class="item">원삼면 임야 <span class="up">+12.3%</span></span>
+        <span class="item">백암면 답 <span class="down">−2.1%</span></span>
+        <span class="item">정상 표본 <span class="up">40</span></span>
+        <span class="item">매칭률 <span class="up">88.6%</span></span>
+        <span class="item">이상치 <span class="down">942</span></span>
+        <span class="item">평단가 중앙 <span class="up">42 만/평</span></span>
+        <span class="item">last update <span style="color:#10b981;">15s ago</span></span>
+      </div>
+      <div class="m19-hero">
+        <div class="m19-eyebrow">// LAND.INTEL · TERMINAL VIEW</div>
+        <h1>데이터로 묻고,<br><span class="red">정밀하게</span> 답을 보다.</h1>
+        <p>실거래·매칭·이상치·매물 검증을 통합한 권리분석 정밀 단말기. 자연어 한 줄에서 시작.</p>
+        <div class="m19-search">
+          <input placeholder="$ 원삼면 임야 평당 100 미만 최근 1년" />
+          <button>ANALYZE →</button>
+        </div>
+      </div>
+      <div class="m19-grid">
+        <div class="m19-stat">
+          <div class="head"><span class="label">TRADES.TOTAL</span><span class="delta">+8.4%</span></div>
+          <div class="val">7,442</div>
+          <div class="bar" style="--p:88%;"></div>
+          <div class="meta"><span>high 14,691</span><span>0% &nbsp; 100%</span></div>
+        </div>
+        <div class="m19-stat">
+          <div class="head"><span class="label">SAMPLE.SIZE</span><span class="delta">stable</span></div>
+          <div class="val">40</div>
+          <div class="bar" style="--p:40%;background:linear-gradient(90deg,#10b981 0%, #10b981 40%, #2e2e2e 40%);"></div>
+          <div class="meta"><span>high · solo</span><span>min=5</span></div>
+        </div>
+        <div class="m19-stat">
+          <div class="head"><span class="label">PRICE.MEDIAN</span><span class="delta">+12.3%</span></div>
+          <div class="val">42<span class="unit"> 만/평</span></div>
+          <div class="bar" style="--p:60%;"></div>
+          <div class="meta"><span>last 12mo</span><span>p25=14 p75=102</span></div>
+        </div>
+        <div class="m19-stat">
+          <div class="head"><span class="label">ANOMALIES</span><span class="delta alert">alert</span></div>
+          <div class="val">942</div>
+          <div class="bar" style="--p:78%;"></div>
+          <div class="meta"><span>🔥892 · ❄️50</span><span>iqr=1.5</span></div>
+        </div>
+      </div>
+      <div class="m19-section">
+        <div class="title">// PARSED INTENT</div>
+        <div class="m19-block"><b style="color:white;">원삼면</b>에서 <b style="color:white;">임야</b> 거래 중 <b style="color:white;">평단가 100만/평 미만</b>인 매물을 <b style="color:white;">최근 1년치</b> 정리. 총 <b style="color:#dc2626;">84건</b> 매칭.</div>
+      </div>
+    </section>
+
+    <!-- ============== 시안 20: Soft Pastel Organic ============== -->
+    <section class="mockup mockup-20">
+      <div class="m20-nav">
+        <div class="m20-logo">
+          <div class="m20-logo-mark">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b21a8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
+          <div class="name">OneFamily 실거래가</div>
+        </div>
+        <div class="m20-tag">친절한 권리분석 도구 · 2026</div>
+      </div>
+      <div class="m20-hero">
+        <div>
+          <span class="m20-eyebrow"><span class="emoji">🌱</span> 자연어 한 줄, 가장 친절한 토지 분석</span>
+          <h1>땅의 이야기를<br><span class="hand">물어보세요</span>,<br>데이터가 <span class="underline">친절히</span> 답합니다.</h1>
+          <p>전문 용어 없이, 일상 언어로. 매칭·시세·매물 검증까지 한 화면에 부드럽게 정리해드려요.</p>
+          <div class="m20-search">
+            <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+            <button>🌸 분석</button>
+          </div>
+        </div>
+        <div class="m20-illust">
+          <svg viewBox="0 0 360 320" xmlns="http://www.w3.org/2000/svg">
+            <!-- 하늘 + 구름 -->
+            <ellipse cx="60" cy="50" rx="42" ry="16" fill="white" opacity="0.9"/>
+            <ellipse cx="280" cy="40" rx="38" ry="14" fill="white" opacity="0.85"/>
+            <!-- 해 -->
+            <circle cx="310" cy="80" r="28" fill="#fde68a"/>
+            <circle cx="310" cy="80" r="20" fill="#fcd34d"/>
+            <!-- 산 -->
+            <path d="M 0,200 L 80,120 L 140,180 L 220,100 L 290,170 L 360,140 L 360,250 L 0,250 Z" fill="#c4b5fd"/>
+            <path d="M 0,220 L 70,160 L 130,210 L 200,150 L 280,200 L 360,180 L 360,260 L 0,260 Z" fill="#a78bfa" opacity="0.85"/>
+            <!-- 풀밭 -->
+            <path d="M 0,250 Q 90,235 180,250 T 360,250 L 360,320 L 0,320 Z" fill="#bbf7d0"/>
+            <!-- 작은 집 -->
+            <rect x="160" y="200" width="60" height="50" fill="#fce7f3" stroke="#831843" stroke-width="2.5"/>
+            <polygon points="155,200 190,170 225,200" fill="#fbcfe8" stroke="#831843" stroke-width="2.5"/>
+            <rect x="183" y="225" width="14" height="25" fill="#831843"/>
+            <!-- 나무 -->
+            <circle cx="80" cy="220" r="22" fill="#86efac" stroke="#15803d" stroke-width="2"/>
+            <rect x="76" y="240" width="8" height="20" fill="#7c2d12"/>
+            <circle cx="280" cy="225" r="18" fill="#86efac" stroke="#15803d" stroke-width="2"/>
+            <rect x="277" y="240" width="6" height="18" fill="#7c2d12"/>
+            <!-- 마커 핀 -->
+            <g transform="translate(190 150)">
+              <path d="M 0,30 Q -12,30 -12,18 Q -12,5 0,-8 Q 12,5 12,18 Q 12,30 0,30 Z" fill="#ec4899" stroke="#831843" stroke-width="2"/>
+              <circle cx="0" cy="14" r="4.5" fill="white"/>
+            </g>
+            <!-- 잎사귀 deco -->
+            <path d="M 30,290 Q 40,275 50,290 Q 40,300 30,290" fill="#86efac" stroke="#15803d" stroke-width="1.5"/>
+            <path d="M 320,290 Q 332,275 344,290 Q 332,302 320,290" fill="#86efac" stroke="#15803d" stroke-width="1.5"/>
+          </svg>
+        </div>
+      </div>
+      <div class="m20-cards">
+        <div class="m20-card c1"><div class="emoji">📈</div><div class="label">전체 거래</div><div class="val">7,442</div><div class="sub">매칭 high 14,691</div></div>
+        <div class="m20-card c2"><div class="emoji">✅</div><div class="label">시세 표본</div><div class="val">40<span class="unit"> 건</span></div><div class="sub">high · 단독</div></div>
+        <div class="m20-card c3"><div class="emoji">💰</div><div class="label">평단가 중앙값</div><div class="val">42<span class="unit"> 만/평</span></div><div class="sub">원삼면 임야 1년</div></div>
+        <div class="m20-card c4"><div class="emoji">⚠️</div><div class="label">이상치 감지</div><div class="val">942</div><div class="sub">🔥892 · ❄️50</div></div>
+      </div>
+      <div class="m20-section">
+        <div class="m20-block">
+          <div class="title"><span class="dot">📋</span> OneFamily가 정리한 내용</div>
+          <div class="body"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b style="color:#ec4899;">84건</b> 찾아드렸어요 🌱</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+  document.querySelectorAll('.sc-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.mockup;
+      document.querySelectorAll('.sc-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.mockup').forEach(m => m.classList.remove('active'));
+      document.querySelector('.mockup-' + id).classList.add('active');
+      document.querySelector('.sc-main').scrollTop = 0;
+    });
+  });
+</script>
+</body>
+</html>

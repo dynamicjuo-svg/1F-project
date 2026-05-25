@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneFamily 실거래가 — V3 화려한 시안 (애니메이션 + 일러스트)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Pretendard:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Pretendard', 'Inter', system-ui, sans-serif;
+    background: #0a0a0a; overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .showcase { display: grid; grid-template-columns: 260px 1fr; height: 100vh; }
+  .sc-side {
+    background: #0a0a0a; color: white; padding: 24px 16px;
+    border-right: 1px solid #1e1e1e; overflow-y: auto;
+  }
+  .sc-side h1 { font-size: 16px; margin-bottom: 4px; letter-spacing: -0.02em; }
+  .sc-side .sub { font-size: 11px; color: #94a3b8; margin-bottom: 20px; }
+  .sc-btn {
+    display: block; width: 100%; padding: 14px;
+    margin-bottom: 8px; background: #1e293b; color: #cbd5e1;
+    border: 1px solid transparent; border-radius: 10px;
+    cursor: pointer; text-align: left; font-family: inherit;
+    transition: all 0.2s ease;
+  }
+  .sc-btn:hover { background: #334155; color: white; transform: translateX(2px); }
+  .sc-btn.active {
+    background: linear-gradient(135deg, #a855f7, #ec4899, #f59e0b);
+    background-size: 200% 200%;
+    color: white; border-color: rgba(255,255,255,0.2);
+    box-shadow: 0 4px 14px rgba(168,85,247,0.5);
+    animation: gradient-flow 3s ease infinite;
+  }
+  @keyframes gradient-flow { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+  .sc-btn .num { font-size: 11px; opacity: 0.7; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
+  .sc-btn .name { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .sc-btn .desc { font-size: 11px; opacity: 0.6; margin-top: 4px; line-height: 1.4; }
+  .sc-side .footer { margin-top: 24px; padding-top: 20px; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b; line-height: 1.6; }
+  .sc-main { overflow-y: auto; background: #0a0a0a; }
+  .mockup { display: none; min-height: 100vh; }
+  .mockup.active { display: block; animation: fadein 0.5s ease; }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+  /* 공통 */
+  .nav { display: flex; justify-content: space-between; align-items: center; padding: 28px 48px; position: relative; z-index: 10; }
+  .nav-links { display: flex; gap: 28px; font-size: 13px; opacity: 0.9; }
+  .icon { width: 20px; height: 20px; display: inline-block; vertical-align: middle; }
+
+  /* ============================================================
+   *  시안 11 — Animated Aurora
+   * ============================================================ */
+  .mockup-11 { background: #0a0a1a; color: white; }
+  .m11-hero {
+    position: relative; overflow: hidden;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(168,85,247,0.4), transparent 50%),
+      radial-gradient(circle at 80% 60%, rgba(236,72,153,0.4), transparent 50%),
+      radial-gradient(circle at 50% 100%, rgba(59,130,246,0.4), transparent 60%),
+      linear-gradient(180deg, #0a0a1a, #1e1b4b);
+    background-size: 200% 200%;
+    animation: aurora-move 20s ease-in-out infinite;
+    padding-bottom: 100px;
+  }
+  @keyframes aurora-move {
+    0%,100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .m11-stars {
+    position: absolute; inset: 0; pointer-events: none;
+  }
+  .m11-stars .star {
+    position: absolute; background: white; border-radius: 50%;
+    animation: twinkle 3s ease-in-out infinite;
+  }
+  @keyframes twinkle {
+    0%,100% { opacity: 0.2; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+  .m11-logo { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 12px; }
+  .m11-logo-mark {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+    border-radius: 12px;
+    box-shadow: 0 0 24px rgba(168,85,247,0.6);
+    display: flex; align-items: center; justify-content: center;
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .m11-logo-mark svg { width: 20px; height: 20px; color: white; }
+  .m11-hero-inner { max-width: 900px; padding: 60px 48px 40px; position: relative; z-index: 5; }
+  .m11-eyebrow {
+    display: inline-block; padding: 6px 14px;
+    background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 24px;
+  }
+  .m11-eyebrow .dot {
+    display: inline-block; width: 6px; height: 6px; background: #10b981;
+    border-radius: 50%; margin-right: 8px; vertical-align: middle;
+    box-shadow: 0 0 8px #10b981;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .m11-hero h1 {
+    font-size: 64px; font-weight: 900; line-height: 1.05; letter-spacing: -0.04em;
+    margin-bottom: 20px;
+    text-shadow: 0 0 60px rgba(168,85,247,0.4);
+  }
+  .m11-hero h1 .glow {
+    background: linear-gradient(135deg, #c4b5fd, #f9a8d4, #fde68a);
+    background-size: 200% 200%;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    animation: gradient-flow 6s ease infinite;
+    filter: drop-shadow(0 0 20px rgba(196,181,253,0.5));
+  }
+  .m11-hero p { font-size: 19px; opacity: 0.85; line-height: 1.5; margin-bottom: 36px; max-width: 600px; }
+  .m11-search {
+    background: rgba(255,255,255,0.95); border-radius: 20px; padding: 8px;
+    display: flex; gap: 8px; align-items: center;
+    box-shadow: 0 30px 80px rgba(168,85,247,0.4), 0 0 0 1px rgba(255,255,255,0.2);
+    max-width: 720px;
+    backdrop-filter: blur(20px);
+  }
+  .m11-search input { flex: 1; border: none; padding: 18px 20px; font-size: 15px; outline: none; background: transparent; color: #0f172a; font-family: inherit; }
+  .m11-search button {
+    padding: 18px 28px; background: linear-gradient(135deg, #a855f7, #ec4899);
+    color: white; border: none; border-radius: 14px; font-size: 14px; font-weight: 700;
+    cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 8px 20px rgba(168,85,247,0.4);
+    transition: transform 0.15s;
+  }
+  .m11-search button:hover { transform: translateY(-2px); }
+  .m11-content { padding: 48px; max-width: 1200px; margin: 0 auto; position: relative; z-index: 5; margin-top: -50px; }
+  .m11-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+  .m11-stat {
+    background: rgba(255,255,255,0.05); backdrop-filter: blur(20px);
+    padding: 24px; border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
+    position: relative; overflow: hidden;
+  }
+  .m11-stat::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(168,85,247,0.1), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .m11-stat:hover { transform: translateY(-4px); border-color: rgba(168,85,247,0.5); }
+  .m11-stat:hover::before { opacity: 1; }
+  .m11-stat .icon-wrap {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(236,72,153,0.2));
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+    color: #c4b5fd;
+  }
+  .m11-stat .label { font-size: 11px; color: #a3a3a3; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .m11-stat .val {
+    font-size: 32px; font-weight: 900; margin-top: 8px; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #fff, #c4b5fd);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .m11-stat .delta { font-size: 12px; color: #10b981; margin-top: 6px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+  .m11-gpt {
+    background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(236,72,153,0.05));
+    border: 1px solid rgba(168,85,247,0.3);
+    padding: 28px; border-radius: 20px;
+    position: relative; overflow: hidden;
+  }
+  .m11-gpt::before {
+    content: ''; position: absolute; top: 0; left: 0; height: 4px; width: 100%;
+    background: linear-gradient(90deg, #a855f7, #ec4899, #f59e0b);
+    background-size: 200% 100%;
+    animation: gradient-flow 4s linear infinite;
+  }
+  .m11-gpt-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .m11-gpt-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+    border-radius: 12px; color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 13px;
+    box-shadow: 0 8px 20px rgba(168,85,247,0.5);
+  }
+  .m11-gpt-title { font-size: 12px; color: #c4b5fd; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  .m11-gpt-body { color: white; font-size: 16px; line-height: 1.65; }
+  .m11-chips { margin-top: 16px; }
+  .m11-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px;
+    background: rgba(168,85,247,0.15); backdrop-filter: blur(10px);
+    border: 1px solid rgba(168,85,247,0.3);
+    border-radius: 999px; font-size: 12px; color: #e9d5ff;
+    margin: 4px 4px 0 0; font-weight: 500;
+  }
+
+  /* ============================================================
+   *  시안 12 — Floating Shapes
+   * ============================================================ */
+  .mockup-12 { background: #0c0a4d; color: white; position: relative; overflow: hidden; }
+  .m12-shapes { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .m12-shapes .s {
+    position: absolute; opacity: 0.15;
+    animation: rotate-float 30s linear infinite;
+  }
+  .m12-shapes .s1 { top: 5%; right: 8%; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle, #f59e0b, transparent); }
+  .m12-shapes .s2 { top: 30%; left: -50px; width: 200px; height: 200px; background: linear-gradient(135deg, #ec4899, #a855f7); border-radius: 30%; animation-delay: -10s; animation-duration: 40s; }
+  .m12-shapes .s3 { bottom: 10%; right: 25%; width: 160px; height: 160px; background: linear-gradient(135deg, #06b6d4, #3b82f6); transform: rotate(45deg); animation-duration: 25s; }
+  .m12-shapes .s4 { bottom: 30%; left: 30%; width: 100px; height: 100px; border-radius: 50%; background: radial-gradient(circle, #84cc16, transparent); animation-delay: -5s; }
+  @keyframes rotate-float {
+    0% { transform: translate(0,0) rotate(0deg); }
+    50% { transform: translate(40px, -30px) rotate(180deg); }
+    100% { transform: translate(0,0) rotate(360deg); }
+  }
+  .mockup-12 > * { position: relative; z-index: 1; }
+  .m12-logo { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 12px; }
+  .m12-logo-mark {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    transform: rotate(-5deg);
+    box-shadow: 0 10px 30px rgba(6,182,212,0.5);
+  }
+  .m12-hero { padding: 60px 48px 80px; max-width: 900px; }
+  .m12-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px); border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 24px;
+  }
+  .m12-hero h1 {
+    font-size: 72px; font-weight: 900; line-height: 1.02; letter-spacing: -0.04em;
+    margin-bottom: 20px;
+  }
+  .m12-hero h1 .accent { color: #fde68a; }
+  .m12-hero p { font-size: 19px; opacity: 0.85; line-height: 1.5; margin-bottom: 36px; max-width: 620px; }
+  .m12-search {
+    background: white; border-radius: 18px; padding: 8px;
+    display: flex; gap: 8px; align-items: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 100px rgba(6,182,212,0.2);
+    max-width: 720px;
+  }
+  .m12-search input { flex: 1; border: none; padding: 16px 18px; font-size: 15px; outline: none; color: #0f172a; font-family: inherit; }
+  .m12-search button {
+    padding: 16px 28px; background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    color: white; border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: all 0.2s;
+  }
+  .m12-search button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59,130,246,0.5); }
+  .m12-content { padding: 48px; max-width: 1200px; margin: 0 auto; }
+  .m12-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .m12-stat {
+    background: rgba(255,255,255,0.05); backdrop-filter: blur(20px);
+    padding: 24px; border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.12);
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    transform-style: preserve-3d;
+  }
+  .m12-stat:hover {
+    transform: translateY(-6px) rotateX(5deg) rotateY(-5deg);
+    border-color: rgba(6,182,212,0.5);
+    box-shadow: 0 20px 50px rgba(6,182,212,0.2);
+  }
+  .m12-stat .icon-wrap {
+    width: 44px; height: 44px; border-radius: 14px;
+    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+    color: white;
+    box-shadow: 0 8px 20px rgba(6,182,212,0.4);
+  }
+  .m12-stat .label { font-size: 11px; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .m12-stat .val { font-size: 32px; font-weight: 900; margin-top: 8px; letter-spacing: -0.02em; color: white; }
+  .m12-stat .delta { font-size: 12px; color: #6ee7b7; margin-top: 6px; font-weight: 600; }
+
+  /* ============================================================
+   *  시안 13 — Map Illustration (좌우 분할)
+   * ============================================================ */
+  .mockup-13 {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #0891b2 100%);
+    color: white; min-height: 100vh;
+  }
+  .m13-nav { display: flex; justify-content: space-between; padding: 28px 48px; align-items: center; position: relative; z-index: 5; }
+  .m13-logo { font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 12px; }
+  .m13-logo-mark { width: 36px; height: 36px; background: linear-gradient(135deg, #fde68a, #f59e0b); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .m13-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; padding: 32px 48px 64px; align-items: center; max-width: 1300px; margin: 0 auto; }
+  .m13-left h1 {
+    font-size: 60px; font-weight: 900; line-height: 1.05; letter-spacing: -0.04em;
+    margin-bottom: 20px;
+  }
+  .m13-left h1 .accent { color: #fde68a; }
+  .m13-eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 20px; }
+  .m13-left p { font-size: 18px; opacity: 0.9; line-height: 1.5; margin-bottom: 32px; }
+  .m13-search { background: white; border-radius: 16px; padding: 8px; display: flex; gap: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .m13-search input { flex: 1; border: none; padding: 16px 18px; font-size: 15px; outline: none; color: #0f172a; font-family: inherit; }
+  .m13-search button { padding: 16px 24px; background: #1e3a8a; color: white; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .m13-right { position: relative; }
+  .m13-illust { width: 100%; height: auto; filter: drop-shadow(0 30px 60px rgba(0,0,0,0.3)); }
+  .m13-illust .parcel { animation: parcel-glow 3s ease-in-out infinite; }
+  @keyframes parcel-glow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.4) drop-shadow(0 0 12px #fde68a); } }
+  .m13-content { padding: 0 48px 64px; max-width: 1300px; margin: 0 auto; }
+  .m13-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .m13-stat {
+    background: rgba(255,255,255,0.08); backdrop-filter: blur(20px);
+    padding: 22px; border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.15);
+    transition: transform 0.2s;
+  }
+  .m13-stat:hover { transform: translateY(-3px); }
+  .m13-stat .icon-wrap { width: 36px; height: 36px; border-radius: 10px; background: rgba(253,230,138,0.2); color: #fde68a; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+  .m13-stat .label { font-size: 10px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .m13-stat .val { font-size: 28px; font-weight: 800; margin-top: 6px; }
+
+  /* ============================================================
+   *  시안 14 — Data Viz Pro (다크 + 차트)
+   * ============================================================ */
+  .mockup-14 {
+    background: #050505; color: #e5e5e5; min-height: 100vh;
+    background-image:
+      linear-gradient(rgba(168,85,247,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(168,85,247,0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .m14-nav { padding: 28px 48px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1a1a1a; }
+  .m14-logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; }
+  .m14-logo-mark { width: 28px; height: 28px; background: linear-gradient(135deg, #a855f7, #06b6d4); border-radius: 8px; }
+  .m14-hero { padding: 64px 48px 40px; max-width: 900px; position: relative; }
+  .m14-eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 6px 14px;
+    background: rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.3);
+    color: #c4b5fd; border-radius: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 24px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .m14-eyebrow .dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; animation: pulse 1.5s ease-in-out infinite; }
+  .m14-hero h1 { font-size: 64px; font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; margin-bottom: 20px; color: white; }
+  .m14-hero h1 .accent {
+    background: linear-gradient(135deg, #a855f7 0%, #06b6d4 50%, #10b981 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    animation: gradient-flow 5s linear infinite;
+  }
+  .m14-hero p { font-size: 18px; color: #a3a3a3; line-height: 1.5; margin-bottom: 36px; max-width: 600px; }
+  .m14-search {
+    background: #0a0a0a; border: 1px solid #2e2e2e; border-radius: 12px;
+    display: flex; align-items: center; gap: 8px; padding: 6px;
+    max-width: 720px;
+    box-shadow: 0 0 0 1px rgba(168,85,247,0.1), 0 20px 60px rgba(168,85,247,0.15);
+  }
+  .m14-search input { flex: 1; padding: 14px 16px; background: transparent; border: none; outline: none; color: white; font-size: 15px; font-family: inherit; }
+  .m14-search input::placeholder { color: #525252; }
+  .m14-search button {
+    padding: 14px 24px; background: linear-gradient(135deg, #a855f7, #06b6d4);
+    color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 8px 20px rgba(168,85,247,0.4);
+  }
+  .m14-stats { padding: 0 48px 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; max-width: 1200px; margin: 0 auto; }
+  .m14-stat { background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 12px; padding: 20px; position: relative; overflow: hidden; transition: all 0.2s; }
+  .m14-stat:hover { border-color: rgba(168,85,247,0.5); }
+  .m14-stat .head { display: flex; justify-content: space-between; align-items: flex-start; }
+  .m14-stat .icon-wrap { width: 32px; height: 32px; border-radius: 8px; background: rgba(168,85,247,0.12); display: flex; align-items: center; justify-content: center; color: #c4b5fd; }
+  .m14-stat .delta {
+    font-size: 11px; padding: 3px 7px;
+    background: rgba(16,185,129,0.12); color: #10b981;
+    border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-weight: 600;
+  }
+  .m14-stat .label { font-size: 10px; color: #737373; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-top: 12px; font-family: 'JetBrains Mono', monospace; }
+  .m14-stat .val { font-size: 30px; font-weight: 800; color: white; margin-top: 4px; letter-spacing: -0.02em; }
+  .m14-stat .chart { margin-top: 10px; }
+  .m14-stat svg.spark { width: 100%; height: 28px; }
+  .m14-stat svg.spark path.fill { fill: url(#sparkGrad); opacity: 0.3; }
+  .m14-stat svg.spark path.line { fill: none; stroke: url(#sparkGrad); stroke-width: 2; }
+  .m14-section { padding: 0 48px 64px; max-width: 1200px; margin: 0 auto; }
+  .m14-section .title { font-size: 11px; color: #737373; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 14px; font-family: 'JetBrains Mono', monospace; }
+  .m14-block { background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 12px; padding: 24px; }
+  .m14-block .head { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+  .m14-block .icon-wrap { width: 32px; height: 32px; background: linear-gradient(135deg, #a855f7, #06b6d4); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; }
+  .m14-block .head-text { font-size: 11px; color: #c4b5fd; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; font-weight: 600; }
+  .m14-block .body { color: #d4d4d4; font-size: 15px; line-height: 1.65; }
+
+  /* ============================================================
+   *  시안 15 — Premium Glass
+   * ============================================================ */
+  .mockup-15 {
+    color: white; min-height: 100vh;
+    background:
+      radial-gradient(ellipse at top, #1e1b4b, transparent 70%),
+      radial-gradient(ellipse at bottom, #831843, transparent 70%),
+      linear-gradient(180deg, #0c0a4d 0%, #1e1b4b 50%, #831843 100%);
+    background-size: 100% 200%;
+    animation: bg-pan 30s ease infinite;
+    position: relative; overflow: hidden;
+  }
+  @keyframes bg-pan {
+    0%,100% { background-position: 0% 0%; }
+    50% { background-position: 0% 100%; }
+  }
+  .m15-floating { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .m15-floating .fi {
+    position: absolute; width: 60px; height: 60px;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.5);
+    animation: float-rotate 20s ease-in-out infinite;
+  }
+  .m15-floating .fi1 { top: 15%; right: 10%; }
+  .m15-floating .fi2 { top: 50%; right: 5%; animation-delay: -7s; }
+  .m15-floating .fi3 { bottom: 20%; right: 15%; animation-delay: -14s; }
+  @keyframes float-rotate {
+    0%,100% { transform: translateY(0) rotate(-10deg); }
+    50% { transform: translateY(-30px) rotate(10deg); }
+  }
+  .mockup-15 > * { position: relative; z-index: 1; }
+  .m15-logo { font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 12px; }
+  .m15-logo-mark { width: 36px; height: 36px; background: linear-gradient(135deg, #a855f7, #ec4899); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(168,85,247,0.5); }
+  .m15-hero { padding: 60px 48px 40px; max-width: 900px; }
+  .m15-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 16px;
+    background: rgba(255,255,255,0.08); backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 24px;
+  }
+  .m15-hero h1 {
+    font-size: 64px; font-weight: 900; line-height: 1.05; letter-spacing: -0.04em;
+    margin-bottom: 20px;
+  }
+  .m15-hero h1 .accent {
+    background: linear-gradient(135deg, #fbcfe8, #fde68a);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .m15-hero p { font-size: 19px; opacity: 0.9; line-height: 1.5; margin-bottom: 36px; max-width: 620px; }
+  .m15-search {
+    background: rgba(255,255,255,0.12); backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px; padding: 8px;
+    display: flex; gap: 8px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+    max-width: 720px;
+  }
+  .m15-search input {
+    flex: 1; border: none; padding: 18px 20px; font-size: 15px; outline: none;
+    background: transparent; color: white; font-family: inherit;
+  }
+  .m15-search input::placeholder { color: rgba(255,255,255,0.5); }
+  .m15-search button {
+    padding: 18px 28px; background: linear-gradient(135deg, #ec4899, #f59e0b);
+    color: white; border: none; border-radius: 14px; font-size: 14px; font-weight: 700;
+    cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 8px 24px rgba(236,72,153,0.5);
+    transition: all 0.2s;
+  }
+  .m15-search button:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(236,72,153,0.6); }
+  .m15-content { padding: 48px; max-width: 1200px; margin: 0 auto; }
+  .m15-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .m15-stat {
+    background: rgba(255,255,255,0.08); backdrop-filter: blur(24px) saturate(180%);
+    padding: 24px; border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.15);
+    transition: all 0.3s;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  }
+  .m15-stat:hover { transform: translateY(-4px); background: rgba(255,255,255,0.12); box-shadow: 0 16px 40px rgba(0,0,0,0.3); }
+  .m15-stat .icon-wrap {
+    width: 44px; height: 44px; border-radius: 14px;
+    background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(245,158,11,0.3));
+    border: 1px solid rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    color: #fbcfe8;
+    margin-bottom: 16px;
+  }
+  .m15-stat .label { font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .m15-stat .val {
+    font-size: 32px; font-weight: 900; margin-top: 8px; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #fff, #fbcfe8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .m15-stat .delta { font-size: 12px; color: #fde68a; margin-top: 6px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="showcase">
+  <aside class="sc-side">
+    <h1>✨ V3 — 화려한 시안</h1>
+    <div class="sub">애니메이션 + 일러스트 + 아이콘</div>
+
+    <button class="sc-btn active" data-mockup="11">
+      <div class="num">11</div>
+      <div class="name">Animated Aurora</div>
+      <div class="desc">움직이는 그라데이션 + 별·glow</div>
+    </button>
+    <button class="sc-btn" data-mockup="12">
+      <div class="num">12</div>
+      <div class="name">Floating Shapes</div>
+      <div class="desc">떠다니는 도형 + 3D 호버</div>
+    </button>
+    <button class="sc-btn" data-mockup="13">
+      <div class="num">13</div>
+      <div class="name">Map Illustration</div>
+      <div class="desc">큰 isometric 토지 일러스트</div>
+    </button>
+    <button class="sc-btn" data-mockup="14">
+      <div class="num">14</div>
+      <div class="name">Data Viz Pro</div>
+      <div class="desc">다크 + 작은 라인차트 + 그리드</div>
+    </button>
+    <button class="sc-btn" data-mockup="15">
+      <div class="num">15</div>
+      <div class="name">Premium Glass</div>
+      <div class="desc">풍성한 그라데이션 + glass + 떠다님</div>
+    </button>
+
+    <div class="footer">
+      클릭으로 시안 전환.<br>
+      마음에 드는 시안 알려주면<br>
+      streamlit app에 즉시 적용.<br><br>
+      시안 1~5: showcase.html<br>
+      시안 6~10: showcase_v2.html
+    </div>
+  </aside>
+
+  <main class="sc-main">
+
+    <!-- ============== 시안 11: Animated Aurora ============== -->
+    <section class="mockup mockup-11 active">
+      <div class="m11-hero">
+        <div class="m11-stars" id="stars-11"></div>
+        <div class="nav">
+          <div class="m11-logo">
+            <div class="m11-logo-mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <span>OneFamily 실거래가</span>
+          </div>
+          <div class="nav-links"><span>검색</span><span>매물 검증</span><span>도움말</span></div>
+        </div>
+        <div class="m11-hero-inner">
+          <span class="m11-eyebrow"><span class="dot"></span>LIVE · 권리분석 정밀 도구</span>
+          <h1>땅의 진짜 가치를<br><span class="glow">한 줄 질문으로</span></h1>
+          <p>매칭, 시세, 검증까지 — 권리분석의 모든 답을 한 화면에서.</p>
+          <div class="m11-search">
+            <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+            <button>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              분석 시작
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="m11-content">
+        <div class="m11-stats">
+          <div class="m11-stat">
+            <div class="icon-wrap"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 6-6"/></svg></div>
+            <div class="label">전체 거래</div>
+            <div class="val">7,442</div>
+            <div class="delta">↑ +590 매칭 승격</div>
+          </div>
+          <div class="m11-stat">
+            <div class="icon-wrap"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div>
+            <div class="label">정상 시세 표본</div>
+            <div class="val">40</div>
+            <div class="delta">high · 단독</div>
+          </div>
+          <div class="m11-stat">
+            <div class="icon-wrap"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <div class="label">평단가 중앙값</div>
+            <div class="val">42<span style="font-size:14px;opacity:0.7;"> 만/평</span></div>
+            <div class="delta">원삼면 임야 1년</div>
+          </div>
+          <div class="m11-stat">
+            <div class="icon-wrap"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+            <div class="label">이상치 감지</div>
+            <div class="val">942</div>
+            <div class="delta" style="color:#fbbf24;">🔥892 · ❄️50</div>
+          </div>
+        </div>
+        <div class="m11-gpt">
+          <div class="m11-gpt-head"><div class="m11-gpt-icon">OF</div><div class="m11-gpt-title">검색 의도 분석</div></div>
+          <div class="m11-gpt-body"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b>84건</b> 매칭됐어요.</div>
+          <div class="m11-chips">
+            <span class="m11-chip">📍 원삼면</span>
+            <span class="m11-chip">🏷️ 임야</span>
+            <span class="m11-chip">💵 100만/평↓</span>
+            <span class="m11-chip">📅 1년</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 시안 12: Floating Shapes ============== -->
+    <section class="mockup mockup-12">
+      <div class="m12-shapes">
+        <div class="s s1"></div><div class="s s2"></div><div class="s s3"></div><div class="s s4"></div>
+      </div>
+      <div class="nav">
+        <div class="m12-logo">
+          <div class="m12-logo-mark">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          </div>
+          <span>OneFamily 실거래가</span>
+        </div>
+        <div class="nav-links"><span>검색</span><span>매물 검증</span><span>도움말</span></div>
+      </div>
+      <div class="m12-hero">
+        <span class="m12-eyebrow">자연어 토지 분석 · 2026</span>
+        <h1>한 줄로 묻고,<br><span class="accent">한눈에</span> 답을 얻다</h1>
+        <p>자연어 검색 + 매물 교차 검증 + 시세 이상치 자동 감지. 권리분석의 모든 데이터.</p>
+        <div class="m12-search">
+          <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+          <button>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            검색
+          </button>
+        </div>
+      </div>
+      <div class="m12-content">
+        <div class="m12-stats">
+          <div class="m12-stat">
+            <div class="icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 6-6"/></svg></div>
+            <div class="label">전체 거래</div>
+            <div class="val">7,442</div>
+            <div class="delta">↑ +590 승격</div>
+          </div>
+          <div class="m12-stat">
+            <div class="icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div>
+            <div class="label">정상 시세 표본</div>
+            <div class="val">40</div>
+            <div class="delta">high · 단독</div>
+          </div>
+          <div class="m12-stat">
+            <div class="icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <div class="label">평단가 중앙값</div>
+            <div class="val">42<span style="font-size:14px;color:#94a3b8;"> 만/평</span></div>
+            <div class="delta">원삼면 임야 1년</div>
+          </div>
+          <div class="m12-stat">
+            <div class="icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+            <div class="label">이상치 감지</div>
+            <div class="val">942</div>
+            <div class="delta" style="color:#fbbf24;">🔥892 · ❄️50</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 시안 13: Map Illustration ============== -->
+    <section class="mockup mockup-13">
+      <div class="m13-nav">
+        <div class="m13-logo">
+          <div class="m13-logo-mark">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1e3a8a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
+          <span>OneFamily 실거래가</span>
+        </div>
+        <div class="nav-links" style="font-size:13px;opacity:0.9;"><span>검색</span><span>매물 검증</span><span>도움말</span></div>
+      </div>
+      <div class="m13-grid">
+        <div class="m13-left">
+          <span class="m13-eyebrow">📍 처인구 · 백암 / 원삼</span>
+          <h1>당신의 땅을<br><span class="accent">가장 정확하게</span> 읽다</h1>
+          <p>자연어로 묻고, 데이터로 답합니다.<br>7,442건의 실거래에서 진짜 시세를 찾아드려요.</p>
+          <div class="m13-search">
+            <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+            <button>분석</button>
+          </div>
+        </div>
+        <div class="m13-right">
+          <!-- isometric 토지 일러스트 SVG -->
+          <svg class="m13-illust" viewBox="0 0 500 400" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="land1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#86efac"/><stop offset="100%" stop-color="#16a34a"/></linearGradient>
+              <linearGradient id="land2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fde68a"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>
+              <linearGradient id="land3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+              <linearGradient id="land4" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#67e8f9"/><stop offset="100%" stop-color="#0891b2"/></linearGradient>
+            </defs>
+            <!-- isometric grid 지면 -->
+            <g transform="translate(250 200)">
+              <!-- 필지 1 (큰 임야 - 강조) -->
+              <polygon class="parcel" points="-180,-30 -40,-100 60,-50 -80,20" fill="url(#land1)" stroke="white" stroke-width="2" opacity="0.95"/>
+              <text x="-80" y="-40" text-anchor="middle" font-size="11" font-weight="700" fill="white">임야 1,200평</text>
+              <!-- 필지 2 -->
+              <polygon points="60,-50 180,-110 280,-60 160,0" fill="url(#land2)" stroke="white" stroke-width="2" opacity="0.85"/>
+              <text x="170" y="-50" text-anchor="middle" font-size="10" font-weight="600" fill="white">대 450평</text>
+              <!-- 필지 3 -->
+              <polygon points="-80,20 60,-50 160,0 20,70" fill="url(#land3)" stroke="white" stroke-width="2" opacity="0.85"/>
+              <text x="40" y="20" text-anchor="middle" font-size="10" font-weight="600" fill="white">답 800평</text>
+              <!-- 필지 4 -->
+              <polygon points="20,70 160,0 280,60 140,140" fill="url(#land4)" stroke="white" stroke-width="2" opacity="0.85"/>
+              <text x="150" y="80" text-anchor="middle" font-size="10" font-weight="600" fill="white">전 600평</text>
+              <!-- 핀 마커 (강조 필지) -->
+              <g transform="translate(-80, -40)">
+                <circle cx="0" cy="0" r="14" fill="#fde68a" opacity="0.3">
+                  <animate attributeName="r" values="14;22;14" dur="2s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="0" cy="0" r="8" fill="#fde68a"/>
+                <path d="M 0,-25 Q -10,-25 -10,-15 Q -10,-5 0,5 Q 10,-5 10,-15 Q 10,-25 0,-25 Z" fill="#dc2626"/>
+                <circle cx="0" cy="-17" r="3" fill="white"/>
+              </g>
+            </g>
+            <!-- 떠 있는 정보 카드 -->
+            <g transform="translate(360 70)">
+              <rect x="0" y="0" width="120" height="50" rx="10" fill="white" opacity="0.95"/>
+              <text x="12" y="20" font-size="10" fill="#64748b" font-weight="600">평단가</text>
+              <text x="12" y="38" font-size="16" font-weight="800" fill="#1e3a8a">42 만/평</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+      <div class="m13-content">
+        <div class="m13-stats">
+          <div class="m13-stat">
+            <div class="icon-wrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 6-6"/></svg></div>
+            <div class="label">전체 거래</div><div class="val">7,442</div>
+          </div>
+          <div class="m13-stat">
+            <div class="icon-wrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div>
+            <div class="label">정상 시세 표본</div><div class="val">40</div>
+          </div>
+          <div class="m13-stat">
+            <div class="icon-wrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <div class="label">평단가 중앙값</div><div class="val">42<span style="font-size:13px;opacity:0.7;"> 만/평</span></div>
+          </div>
+          <div class="m13-stat">
+            <div class="icon-wrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></div>
+            <div class="label">이상치 감지</div><div class="val">942</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 시안 14: Data Viz Pro ============== -->
+    <section class="mockup mockup-14">
+      <div class="m14-nav">
+        <div class="m14-logo">
+          <div class="m14-logo-mark"></div>
+          <span>OneFamily 실거래가</span>
+        </div>
+        <div class="nav-links" style="font-size:12px;color:#737373;font-family:'JetBrains Mono',monospace;"><span>SEARCH</span><span>VERIFY</span><span>DOCS</span></div>
+      </div>
+      <div class="m14-hero">
+        <span class="m14-eyebrow"><span class="dot"></span>// PROFESSIONAL EDITION · v2.0</span>
+        <h1>데이터가 말하는<br><span class="accent">진짜 시세를 보다</span></h1>
+        <p>실거래·매칭·이상치·매물 검증을 통합한 권리분석 정밀 도구.<br>7,442건의 거래에서 답을 찾으세요.</p>
+        <div class="m14-search">
+          <input placeholder="$ 원삼면 임야 평당 100 미만 최근 1년" />
+          <button>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            ANALYZE
+          </button>
+        </div>
+      </div>
+      <svg width="0" height="0"><defs><linearGradient id="sparkGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient></defs></svg>
+      <div class="m14-stats">
+        <div class="m14-stat">
+          <div class="head">
+            <div class="icon-wrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 6-6"/></svg></div>
+            <span class="delta">+8.4%</span>
+          </div>
+          <div class="label">// total_trades</div>
+          <div class="val">7,442</div>
+          <div class="chart">
+            <svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <path class="fill" d="M 0,22 L 12,18 L 24,20 L 36,14 L 48,16 L 60,10 L 72,12 L 84,6 L 100,8 L 100,28 L 0,28 Z"/>
+              <path class="line" d="M 0,22 L 12,18 L 24,20 L 36,14 L 48,16 L 60,10 L 72,12 L 84,6 L 100,8"/>
+            </svg>
+          </div>
+        </div>
+        <div class="m14-stat">
+          <div class="head">
+            <div class="icon-wrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div>
+            <span class="delta">stable</span>
+          </div>
+          <div class="label">// price_sample</div>
+          <div class="val">40</div>
+          <div class="chart">
+            <svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <path class="fill" d="M 0,18 L 12,15 L 24,17 L 36,12 L 48,14 L 60,11 L 72,13 L 84,10 L 100,12 L 100,28 L 0,28 Z"/>
+              <path class="line" d="M 0,18 L 12,15 L 24,17 L 36,12 L 48,14 L 60,11 L 72,13 L 84,10 L 100,12"/>
+            </svg>
+          </div>
+        </div>
+        <div class="m14-stat">
+          <div class="head">
+            <div class="icon-wrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <span class="delta">+12.3%</span>
+          </div>
+          <div class="label">// price_median</div>
+          <div class="val">42<span style="font-size:13px;color:#737373;"> 만/평</span></div>
+          <div class="chart">
+            <svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <path class="fill" d="M 0,20 L 12,16 L 24,18 L 36,12 L 48,14 L 60,8 L 72,10 L 84,4 L 100,6 L 100,28 L 0,28 Z"/>
+              <path class="line" d="M 0,20 L 12,16 L 24,18 L 36,12 L 48,14 L 60,8 L 72,10 L 84,4 L 100,6"/>
+            </svg>
+          </div>
+        </div>
+        <div class="m14-stat">
+          <div class="head">
+            <div class="icon-wrap" style="background:rgba(251,191,36,0.12);color:#fbbf24;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></div>
+            <span class="delta" style="background:rgba(251,191,36,0.12);color:#fbbf24;">alert</span>
+          </div>
+          <div class="label">// anomalies</div>
+          <div class="val" style="background:linear-gradient(135deg,#a855f7,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">942</div>
+          <div class="chart">
+            <svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <path class="fill" d="M 0,14 L 12,17 L 24,12 L 36,18 L 48,10 L 60,16 L 72,8 L 84,14 L 100,6 L 100,28 L 0,28 Z"/>
+              <path class="line" d="M 0,14 L 12,17 L 24,12 L 36,18 L 48,10 L 60,16 L 72,8 L 84,14 L 100,6"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="m14-section">
+        <div class="title">// PARSED INTENT</div>
+        <div class="m14-block">
+          <div class="head">
+            <div class="icon-wrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div class="head-text">QUERY → CONDITIONS</div>
+          </div>
+          <div class="body"><b style="color:white;">원삼면</b>에서 <b style="color:white;">임야</b> 거래 중 <b style="color:white;">평단가 100만/평 미만</b>인 매물을 <b style="color:white;">최근 1년치</b> 정리. 총 <b style="color:#06b6d4;">84건</b> 매칭.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 시안 15: Premium Glass ============== -->
+    <section class="mockup mockup-15">
+      <div class="m15-floating">
+        <div class="fi fi1"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <div class="fi fi2"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
+        <div class="fi fi3"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 6-6"/></svg></div>
+      </div>
+      <div class="nav">
+        <div class="m15-logo">
+          <div class="m15-logo-mark">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <span>OneFamily 실거래가</span>
+        </div>
+        <div class="nav-links"><span>검색</span><span>매물 검증</span><span>도움말</span></div>
+      </div>
+      <div class="m15-hero">
+        <span class="m15-eyebrow"><span style="width:6px;height:6px;background:#fde68a;border-radius:50%;display:inline-block;box-shadow:0 0 8px #fde68a;"></span>권리분석의 다음 세대</span>
+        <h1>자연어로 묻고,<br><span class="accent">지표로 확인하다</span></h1>
+        <p>매물 한 줄 입력으로 일치도 100점 매칭. 시세 이상치 942건 자동 감지.</p>
+        <div class="m15-search">
+          <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+          <button>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            검색
+          </button>
+        </div>
+      </div>
+      <div class="m15-content">
+        <div class="m15-stats">
+          <div class="m15-stat">
+            <div class="icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 6-6"/></svg></div>
+            <div class="label">전체 거래</div>
+            <div class="val">7,442</div>
+            <div class="delta">↑ +590 승격</div>
+          </div>
+          <div class="m15-stat">
+            <div class="icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div>
+            <div class="label">정상 시세 표본</div>
+            <div class="val">40</div>
+            <div class="delta">high · 단독</div>
+          </div>
+          <div class="m15-stat">
+            <div class="icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <div class="label">평단가 중앙값</div>
+            <div class="val">42<span style="font-size:14px;opacity:0.7;"> 만/평</span></div>
+            <div class="delta">원삼면 임야 1년</div>
+          </div>
+          <div class="m15-stat">
+            <div class="icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></div>
+            <div class="label">이상치 감지</div>
+            <div class="val">942</div>
+            <div class="delta">🔥892 · ❄️50</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+  // 시안 토글
+  document.querySelectorAll('.sc-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.mockup;
+      document.querySelectorAll('.sc-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.mockup').forEach(m => m.classList.remove('active'));
+      document.querySelector('.mockup-' + id).classList.add('active');
+      document.querySelector('.sc-main').scrollTop = 0;
+    });
+  });
+
+  // 시안 11 — 별 파티클 자동 생성
+  (function(){
+    const starsEl = document.getElementById('stars-11');
+    if (!starsEl) return;
+    for (let i = 0; i < 60; i++) {
+      const s = document.createElement('div');
+      s.className = 'star';
+      const size = Math.random() * 2 + 1;
+      s.style.width = size + 'px';
+      s.style.height = size + 'px';
+      s.style.left = Math.random() * 100 + '%';
+      s.style.top = Math.random() * 100 + '%';
+      s.style.animationDelay = Math.random() * 3 + 's';
+      s.style.opacity = Math.random() * 0.7 + 0.3;
+      starsEl.appendChild(s);
+    }
+  })();
+
+  // 숫자 카운트업 애니메이션 (모든 .val 또는 .m11-stat .val)
+  function countUp(el, target) {
+    const dur = 1200;
+    const start = performance.now();
+    function tick(now) {
+      const t = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      const cur = Math.floor(target * ease);
+      el.firstChild.nodeValue = cur.toLocaleString();
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  // 시안 전환 시 활성 mockup의 숫자 카운트업
+  function animateNumbers() {
+    const active = document.querySelector('.mockup.active');
+    if (!active) return;
+    active.querySelectorAll('.val').forEach(el => {
+      const text = el.firstChild && el.firstChild.nodeValue;
+      if (!text) return;
+      const cleaned = text.replace(/,/g, '').trim();
+      const n = parseInt(cleaned);
+      if (!isNaN(n) && n > 10) {
+        el.firstChild.nodeValue = '0';
+        countUp(el, n);
+      }
+    });
+  }
+  animateNumbers();
+  document.querySelectorAll('.sc-btn').forEach(btn => {
+    btn.addEventListener('click', () => setTimeout(animateNumbers, 100));
+  });
+</script>
+</body>
+</html>

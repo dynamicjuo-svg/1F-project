@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneFamily 실거래가 — 시안 3 폰트·문구 변형 4종</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@400&family=Cormorant+Garamond:wght@500;600;700&family=Noto+Serif+KR:wght@500;700;900&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Pretendard:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Gmarket Sans (한국 폰트) */
+  @font-face {
+    font-family: 'GmarketSans';
+    font-weight: 700;
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansTTFBold.woff') format('woff');
+  }
+  @font-face {
+    font-family: 'GmarketSans';
+    font-weight: 500;
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansTTFMedium.woff') format('woff');
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: #0a0a0a; overflow: hidden; -webkit-font-smoothing: antialiased; }
+  .showcase { display: grid; grid-template-columns: 280px 1fr; height: 100vh; }
+  .sc-side {
+    background: #0f172a; color: white; padding: 24px 16px;
+    overflow-y: auto; font-family: 'Pretendard', sans-serif;
+  }
+  .sc-side h1 { font-size: 16px; margin-bottom: 4px; letter-spacing: -0.02em; }
+  .sc-side .sub { font-size: 11px; color: #94a3b8; margin-bottom: 20px; }
+  .sc-btn {
+    display: block; width: 100%; padding: 14px;
+    margin-bottom: 10px; background: #1e293b; color: #cbd5e1;
+    border: 1px solid transparent; border-radius: 10px;
+    cursor: pointer; text-align: left; font-family: 'Pretendard';
+    transition: all 0.2s ease;
+  }
+  .sc-btn:hover { background: #334155; color: white; }
+  .sc-btn.active {
+    background: linear-gradient(135deg, #1e40af, #06b6d4);
+    color: white; border-color: rgba(255,255,255,0.2);
+    box-shadow: 0 4px 14px rgba(30,64,175,0.4);
+  }
+  .sc-btn .num { font-size: 11px; opacity: 0.7; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
+  .sc-btn .name { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .sc-btn .desc { font-size: 11px; opacity: 0.6; margin-top: 4px; line-height: 1.4; }
+  .sc-side .footer { margin-top: 24px; padding-top: 20px; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b; line-height: 1.6; }
+  .sc-main { overflow-y: auto; }
+  .mockup { display: none; min-height: 100vh; }
+  .mockup.active { display: block; animation: fadein 0.4s ease; }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ===== 공통 Glass 베이스 (시안 3 그대로) ===== */
+  .glass-bg {
+    background-image:
+      linear-gradient(135deg, rgba(15,23,42,0.4), rgba(30,58,138,0.3)),
+      url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><defs><linearGradient id="sky" x1="0%25" y1="0%25" x2="0%25" y2="100%25"><stop offset="0%25" style="stop-color:%2393c5fd"/><stop offset="100%25" style="stop-color:%23dbeafe"/></linearGradient><linearGradient id="ground" x1="0%25" y1="0%25" x2="0%25" y2="100%25"><stop offset="0%25" style="stop-color:%2386efac"/><stop offset="100%25" style="stop-color:%2316a34a"/></linearGradient></defs><rect width="1200" height="500" fill="url(%23sky)"/><polygon points="0,500 200,400 400,450 600,380 800,420 1000,360 1200,400 1200,800 0,800" fill="url(%23ground)"/><polygon points="0,800 1200,800 1200,520 950,470 700,560 450,500 200,580 0,540" fill="%2365a30d"/><circle cx="900" cy="180" r="55" fill="%23fde68a" opacity="0.9"/></svg>');
+    background-size: cover; background-position: center;
+    min-height: 100vh; color: white; position: relative;
+  }
+  .nav { display: flex; justify-content: space-between; padding: 28px 48px; align-items: center; backdrop-filter: blur(20px); background: rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.15); }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; }
+  .logo .dot { width: 28px; height: 28px; background: white; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #1e40af; font-weight: 800; font-size: 12px; box-shadow: 0 8px 24px rgba(255,255,255,0.3); }
+  .nav-links { display: flex; gap: 28px; font-size: 13px; opacity: 0.9; }
+  .hero { padding: 90px 48px 50px; max-width: 860px; }
+  .eyebrow {
+    display: inline-block; padding: 6px 16px;
+    background: rgba(255,255,255,0.15); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.25); border-radius: 999px;
+    margin-bottom: 24px;
+  }
+  .hero p { font-size: 18px; opacity: 0.95; line-height: 1.5; margin-bottom: 32px; }
+  .search {
+    background: rgba(255,255,255,0.88); backdrop-filter: blur(24px) saturate(160%);
+    border-radius: 20px; padding: 8px;
+    border: 1px solid rgba(255,255,255,0.4);
+    display: flex; gap: 8px; align-items: center;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.22);
+    max-width: 720px;
+  }
+  .search input { flex: 1; border: none; padding: 16px 20px; font-size: 15px; outline: none; background: transparent; color: #0f172a; font-family: inherit; }
+  .search button { padding: 16px 28px; background: #1e3a8a; color: white; border: none; border-radius: 14px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .cards { padding: 32px 48px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .card {
+    background: rgba(255,255,255,0.72); backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.4); border-radius: 18px;
+    padding: 22px; color: #0f172a;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0,0,0,0.15); }
+  .card .label { font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .card .val { font-size: 30px; font-weight: 800; margin-top: 8px; color: #1e3a8a; letter-spacing: -0.02em; }
+  .card .sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+  .content { padding: 0 48px 64px; }
+  .section {
+    background: rgba(255,255,255,0.72); backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.4); border-radius: 22px;
+    padding: 28px 32px; color: #0f172a; margin-top: 24px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+  }
+  .section h3 { font-size: 18px; font-weight: 700; margin-bottom: 14px; }
+
+  /* ============================================================
+   *  변형 A — Editorial Serif (DM Serif + Pretendard)
+   * ============================================================ */
+  .mockup-A {
+    font-family: 'Pretendard', sans-serif;
+  }
+  .mockup-A .eyebrow {
+    font-family: 'DM Serif Display', serif;
+    font-size: 13px; font-weight: 400; letter-spacing: 0.04em;
+    font-style: italic;
+  }
+  .mockup-A .hero h1 {
+    font-family: 'DM Serif Display', 'Noto Serif KR', serif;
+    font-size: 84px; font-weight: 400; line-height: 1.0;
+    letter-spacing: -0.02em; margin-bottom: 22px;
+    text-shadow: 0 4px 30px rgba(0,0,0,0.2);
+  }
+  .mockup-A .hero h1 .ko {
+    font-family: 'Noto Serif KR', serif; font-weight: 900;
+    font-size: 0.88em; letter-spacing: -0.04em;
+  }
+  .mockup-A .hero h1 .pause { display: inline-block; width: 20px; }
+  .mockup-A .hero p { font-family: 'Pretendard', sans-serif; font-weight: 500; }
+  .mockup-A .card .val { font-family: 'DM Serif Display', serif; font-weight: 400; font-size: 36px; }
+  .mockup-A .section h3 { font-family: 'DM Serif Display', 'Noto Serif KR', serif; font-weight: 400; font-style: italic; }
+
+  /* ============================================================
+   *  변형 B — Modern Korean (Gmarket Sans + Pretendard)
+   * ============================================================ */
+  .mockup-B { font-family: 'Pretendard', sans-serif; }
+  .mockup-B .eyebrow { font-family: 'GmarketSans', 'Pretendard', sans-serif; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+  .mockup-B .hero h1 {
+    font-family: 'GmarketSans', 'Pretendard', sans-serif;
+    font-size: 64px; font-weight: 700; line-height: 1.12;
+    letter-spacing: -0.04em; margin-bottom: 22px;
+  }
+  .mockup-B .hero h1 .accent { color: #fde68a; }
+  .mockup-B .hero p { font-family: 'Pretendard', sans-serif; font-weight: 500; }
+  .mockup-B .card .label { font-family: 'GmarketSans', sans-serif; font-weight: 500; font-size: 10px; }
+  .mockup-B .card .val { font-family: 'Pretendard', sans-serif; font-weight: 800; }
+  .mockup-B .section h3 { font-family: 'GmarketSans', sans-serif; font-weight: 700; }
+
+  /* ============================================================
+   *  변형 C — Classic Magazine (Cormorant + Noto Serif KR)
+   * ============================================================ */
+  .mockup-C { font-family: 'Noto Serif KR', serif; }
+  .mockup-C .eyebrow {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 14px; font-weight: 600; letter-spacing: 0.18em;
+    text-transform: uppercase; font-style: italic;
+  }
+  .mockup-C .hero h1 {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 78px; font-weight: 900; line-height: 1.08;
+    letter-spacing: -0.05em; margin-bottom: 22px;
+    text-shadow: 0 4px 30px rgba(0,0,0,0.25);
+  }
+  .mockup-C .hero h1 .em {
+    font-family: 'Cormorant Garamond', serif; font-weight: 600;
+    font-style: italic; color: #fde68a; font-size: 0.95em;
+  }
+  .mockup-C .hero p {
+    font-family: 'Cormorant Garamond', serif; font-size: 22px;
+    font-style: italic; font-weight: 500; letter-spacing: 0.01em;
+  }
+  .mockup-C .card .label { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 13px; letter-spacing: 0.1em; }
+  .mockup-C .card .val { font-family: 'Noto Serif KR', serif; font-weight: 900; }
+  .mockup-C .section h3 { font-family: 'Noto Serif KR', serif; font-weight: 900; }
+
+  /* ============================================================
+   *  변형 D — Tech / Pro (IBM Plex + JetBrains Mono)
+   * ============================================================ */
+  .mockup-D { font-family: 'IBM Plex Sans KR', 'Pretendard', sans-serif; }
+  .mockup-D .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .mockup-D .hero h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 56px; font-weight: 600; line-height: 1.1;
+    letter-spacing: -0.03em; margin-bottom: 12px;
+  }
+  .mockup-D .hero h1 .ko {
+    display: block; font-family: 'IBM Plex Sans KR', sans-serif;
+    font-weight: 700; font-size: 0.62em; letter-spacing: -0.02em;
+    opacity: 0.95; margin-top: 12px;
+  }
+  .mockup-D .hero p { font-family: 'IBM Plex Sans KR', sans-serif; font-weight: 500; }
+  .mockup-D .card .label { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 10px; letter-spacing: 0.08em; }
+  .mockup-D .card .val { font-family: 'IBM Plex Sans KR', sans-serif; font-weight: 700; }
+  .mockup-D .section h3 { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="showcase">
+  <aside class="sc-side">
+    <h1>🅰️ 시안 3 폰트·문구 변형</h1>
+    <div class="sub">Glass 컨셉 유지 · 폰트/카피 4종</div>
+
+    <button class="sc-btn active" data-mockup="A">
+      <div class="num">변형 A</div>
+      <div class="name">Editorial Serif</div>
+      <div class="desc">DM Serif + Pretendard · 클래식 모던</div>
+    </button>
+    <button class="sc-btn" data-mockup="B">
+      <div class="num">변형 B</div>
+      <div class="name">Modern Korean</div>
+      <div class="desc">Gmarket Sans · 세련 한국 폰트</div>
+    </button>
+    <button class="sc-btn" data-mockup="C">
+      <div class="num">변형 C</div>
+      <div class="name">Classic Magazine</div>
+      <div class="desc">Cormorant + Noto Serif KR · 우아·잡지</div>
+    </button>
+    <button class="sc-btn" data-mockup="D">
+      <div class="num">변형 D</div>
+      <div class="name">Tech / Pro</div>
+      <div class="desc">IBM Plex + JetBrains Mono · 전문 도구</div>
+    </button>
+
+    <div class="footer">
+      클릭으로 폰트·문구 비교.<br>
+      마음에 드는 변형 알려주면<br>
+      streamlit app에 즉시 적용.
+    </div>
+  </aside>
+
+  <main class="sc-main">
+
+    <!-- ============== 변형 A: Editorial Serif ============== -->
+    <section class="mockup mockup-A active glass-bg">
+      <div class="nav">
+        <div class="logo"><div class="dot">OF</div> OneFamily 실거래가</div>
+        <div style="font-size:13px;opacity:0.9;font-family:'DM Serif Display';font-style:italic;">est. 2026</div>
+      </div>
+      <div class="hero">
+        <span class="eyebrow">— Land Intelligence —</span>
+        <h1><span style="font-style:italic;">Ask the land.</span><br><span class="ko">땅을 묻다, 데이터로 답하다</span></h1>
+        <p>자연어 한 줄로 토지를 분석합니다. 매칭·시세·이상치·매물 검증을 한 화면에서.</p>
+        <div class="search">
+          <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+          <button>🔍 분석</button>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card"><div class="label">전체 거래</div><div class="val">7,442</div><div class="sub">매칭 high 14,691건</div></div>
+        <div class="card"><div class="label">정상 시세 표본</div><div class="val">40<span style="font-size:14px;color:#64748b;font-family:Pretendard;font-weight:500;"> 건</span></div><div class="sub">high · 단독</div></div>
+        <div class="card"><div class="label">평단가 중앙값</div><div class="val">42<span style="font-size:14px;color:#64748b;font-family:Pretendard;font-weight:500;"> 만/평</span></div><div class="sub">원삼면 임야 1년</div></div>
+        <div class="card"><div class="label">이상치 감지</div><div class="val">942</div><div class="sub">🔥892 · ❄️50</div></div>
+      </div>
+      <div class="content">
+        <div class="section">
+          <h3>OneFamily — Parsed Intent</h3>
+          <p style="font-size:15px; line-height:1.65; color:#1e293b;"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b>84건</b> 매칭.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 변형 B: Modern Korean (Gmarket Sans) ============== -->
+    <section class="mockup mockup-B glass-bg">
+      <div class="nav">
+        <div class="logo"><div class="dot">OF</div> OneFamily 실거래가</div>
+        <div style="font-size:13px;opacity:0.9;">권리분석 정밀 도구</div>
+      </div>
+      <div class="hero">
+        <span class="eyebrow">자연어 토지 분석 · 2026</span>
+        <h1>토지 분석의<br><span class="accent">새로운 기준</span></h1>
+        <p>한 줄 질문에 매칭·시세·이상치·매물 검증까지 — 권리분석가의 다음 도구.</p>
+        <div class="search">
+          <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+          <button>🔍 검색</button>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card"><div class="label">전체 거래</div><div class="val">7,442</div><div class="sub">매칭 high 14,691건</div></div>
+        <div class="card"><div class="label">시세 표본</div><div class="val">40<span style="font-size:14px;color:#64748b;font-weight:500;"> 건</span></div><div class="sub">high · 단독</div></div>
+        <div class="card"><div class="label">평단가 중앙값</div><div class="val">42<span style="font-size:14px;color:#64748b;font-weight:500;"> 만/평</span></div><div class="sub">원삼면 임야 1년</div></div>
+        <div class="card"><div class="label">이상치 감지</div><div class="val">942</div><div class="sub">🔥892 · ❄️50</div></div>
+      </div>
+      <div class="content">
+        <div class="section">
+          <h3>📋 검색 의도 풀이</h3>
+          <p style="font-size:15px; line-height:1.65; color:#1e293b;"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b>84건</b> 매칭.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 변형 C: Classic Magazine ============== -->
+    <section class="mockup mockup-C glass-bg">
+      <div class="nav">
+        <div class="logo" style="font-family:'Noto Serif KR';font-weight:900;"><div class="dot">OF</div> OneFamily 실거래가</div>
+        <div style="font-size:13px;opacity:0.9;font-family:'Cormorant Garamond';font-style:italic;letter-spacing:0.1em;">Vol. 01 · 2026</div>
+      </div>
+      <div class="hero">
+        <span class="eyebrow">— Real Estate Intelligence —</span>
+        <h1>가치는 <span class="em">데이터로</span><br>증명된다.</h1>
+        <p>A new way to read the land — 자연어 한 줄로 토지를 분석합니다.</p>
+        <div class="search">
+          <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+          <button>분석하기</button>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card"><div class="label">전체 거래</div><div class="val">7,442</div><div class="sub" style="font-family:'Cormorant Garamond';font-style:italic;font-size:13px;">매칭 high 14,691건</div></div>
+        <div class="card"><div class="label">시세 표본</div><div class="val">40</div><div class="sub" style="font-family:'Cormorant Garamond';font-style:italic;font-size:13px;">high · 단독</div></div>
+        <div class="card"><div class="label">평단가 중앙값</div><div class="val">42<span style="font-size:14px;color:#64748b;"> 만/평</span></div><div class="sub" style="font-family:'Cormorant Garamond';font-style:italic;font-size:13px;">원삼면 임야 1년</div></div>
+        <div class="card"><div class="label">이상치</div><div class="val">942</div><div class="sub" style="font-family:'Cormorant Garamond';font-style:italic;font-size:13px;">🔥892 · ❄️50</div></div>
+      </div>
+      <div class="content">
+        <div class="section">
+          <h3>The Verdict</h3>
+          <p style="font-size:16px; line-height:1.7; color:#1e293b;"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b style="font-family:'Cormorant Garamond';font-weight:700;font-size:20px;">84</b>건 매칭.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 변형 D: Tech / Pro ============== -->
+    <section class="mockup mockup-D glass-bg">
+      <div class="nav">
+        <div class="logo"><div class="dot">OF</div> OneFamily 실거래가</div>
+        <div style="font-size:11px;opacity:0.9;font-family:'JetBrains Mono';letter-spacing:0.1em;">v2.0 · PROFESSIONAL</div>
+      </div>
+      <div class="hero">
+        <span class="eyebrow">// Land Intelligence Platform</span>
+        <h1>Land Intelligence.<br><span class="ko">한 줄로 묻는 토지 분석.</span></h1>
+        <p>실거래·매칭·이상치·매물 검증을 통합한 권리분석 정밀 도구. 7,442건의 거래에서 답을 찾으세요.</p>
+        <div class="search">
+          <input placeholder="$ 원삼면 임야 평당 100 미만 최근 1년" />
+          <button>ANALYZE →</button>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card"><div class="label">// trades</div><div class="val">7,442</div><div class="sub" style="font-family:'JetBrains Mono';font-size:11px;">매칭 high 14,691</div></div>
+        <div class="card"><div class="label">// sample</div><div class="val">40</div><div class="sub" style="font-family:'JetBrains Mono';font-size:11px;">high · solo</div></div>
+        <div class="card"><div class="label">// median</div><div class="val">42<span style="font-size:14px;color:#64748b;font-family:'JetBrains Mono';font-weight:600;"> 만/평</span></div><div class="sub" style="font-family:'JetBrains Mono';font-size:11px;">last 12 mo</div></div>
+        <div class="card"><div class="label">// anomalies</div><div class="val">942</div><div class="sub" style="font-family:'JetBrains Mono';font-size:11px;">🔥892 · ❄️50</div></div>
+      </div>
+      <div class="content">
+        <div class="section">
+          <h3>// PARSED INTENT</h3>
+          <p style="font-size:15px; line-height:1.65; color:#1e293b;"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b style="font-family:'JetBrains Mono';font-weight:600;color:#1e3a8a;">84</b>건 매칭.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+  document.querySelectorAll('.sc-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.mockup;
+      document.querySelectorAll('.sc-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.mockup').forEach(m => m.classList.remove('active'));
+      document.querySelector('.mockup-' + id).classList.add('active');
+      document.querySelector('.sc-main').scrollTop = 0;
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneFamily 실거래가 — 시안 6~10 (Fintech 톤 변주)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Pretendard:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  /* ===========================================================
+   *  Showcase Container
+   * =========================================================== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Pretendard', 'Inter', 'Noto Sans KR', system-ui, sans-serif;
+    background: #f1f5f9; overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .showcase {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    height: 100vh;
+  }
+  .sc-side {
+    background: #0f172a; color: white; padding: 24px 16px;
+    border-right: 1px solid #1e293b;
+    overflow-y: auto;
+  }
+  .sc-side h1 { font-size: 16px; margin-bottom: 4px; letter-spacing: -0.02em; }
+  .sc-side .sub { font-size: 11px; color: #94a3b8; margin-bottom: 20px; }
+  .sc-btn {
+    display: block; width: 100%; padding: 14px 14px;
+    margin-bottom: 8px; background: #1e293b; color: #cbd5e1;
+    border: 1px solid transparent; border-radius: 10px;
+    cursor: pointer; text-align: left; font-family: inherit;
+    transition: all 0.15s ease;
+  }
+  .sc-btn:hover { background: #334155; color: white; }
+  .sc-btn.active {
+    background: linear-gradient(135deg, #2563EB, #7c3aed);
+    color: white; border-color: rgba(255,255,255,0.2);
+    box-shadow: 0 4px 14px rgba(37,99,235,0.4);
+  }
+  .sc-btn .num { font-size: 11px; opacity: 0.7; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
+  .sc-btn .name { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .sc-btn .desc { font-size: 11px; opacity: 0.6; margin-top: 4px; line-height: 1.4; }
+  .sc-side .footer {
+    margin-top: 24px; padding-top: 20px;
+    border-top: 1px solid #1e293b; font-size: 11px; color: #64748b;
+    line-height: 1.6;
+  }
+  .sc-main { overflow-y: auto; background: #f8fafc; }
+  .mockup { display: none; min-height: 100vh; background: white; font-family: 'Pretendard', 'Inter', sans-serif; }
+  .mockup.active { display: block; }
+
+  /* ========== 공통 mockup 스타일 ========== */
+  .hero { padding: 64px 48px 80px; color: white; position: relative; overflow: hidden; }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.15) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255,255,255,0.1) 0%, transparent 40%);
+    pointer-events: none;
+  }
+  .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 56px; position: relative; z-index: 1; }
+  .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+  .nav-links { display: flex; gap: 28px; font-size: 13px; opacity: 0.9; }
+  .hero-inner { max-width: 760px; position: relative; z-index: 1; }
+  .eyebrow {
+    display: inline-block; padding: 5px 12px;
+    background: rgba(255,255,255,0.15); border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.25);
+  }
+  .hero h1 {
+    font-size: 52px; font-weight: 800; letter-spacing: -0.03em;
+    line-height: 1.08; margin-bottom: 18px;
+  }
+  .hero p { font-size: 18px; opacity: 0.9; line-height: 1.5; margin-bottom: 32px; max-width: 640px; }
+  .search {
+    background: white; border-radius: 18px; padding: 8px;
+    display: flex; gap: 8px; align-items: center;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+    max-width: 720px;
+  }
+  .search input { flex: 1; border: none; padding: 16px 18px; font-size: 15px; outline: none; font-family: inherit; color: #0f172a; }
+  .search input::placeholder { color: #94a3b8; }
+  .search button {
+    padding: 16px 28px; background: #0f172a; color: white;
+    border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .content { padding: 48px; max-width: 1200px; margin: 0 auto; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+  .stat {
+    background: white; padding: 22px; border-radius: 16px;
+    border: 1px solid #e2e8f0; transition: all 0.2s;
+  }
+  .stat:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.08); }
+  .stat .label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .stat .val { font-size: 30px; font-weight: 800; color: #0f172a; margin-top: 6px; letter-spacing: -0.02em; }
+  .stat .delta { font-size: 12px; margin-top: 4px; font-weight: 600; }
+  .section-title { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 16px; letter-spacing: -0.01em; }
+  .gpt {
+    border: 1px solid; padding: 22px 26px; border-radius: 16px; margin-bottom: 32px;
+  }
+  .gpt-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .gpt-icon {
+    width: 32px; height: 32px; color: white; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 12px;
+  }
+  .gpt-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  .gpt-body { color: #1e293b; font-size: 15px; line-height: 1.65; }
+  .chips { margin-top: 14px; }
+  .chip { display: inline-block; padding: 5px 12px; background: white; border-radius: 999px; font-size: 12px; margin: 4px 4px 0 0; font-weight: 500; border: 1px solid; }
+
+  /* ===========================================================
+   *  시안 6 — Aurora (파랑·보라·핑크)
+   * =========================================================== */
+  .mockup-6 .hero {
+    background:
+      linear-gradient(135deg, #1e1b4b 0%, #1e3a8a 30%, #7c3aed 60%, #db2777 100%);
+  }
+  .mockup-6 .logo .accent { background: linear-gradient(90deg, #c4b5fd, #fbcfe8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .mockup-6 .stat:hover { box-shadow: 0 10px 28px rgba(124, 58, 237, 0.18); }
+  .mockup-6 .gpt { background: linear-gradient(135deg, #faf5ff, #fdf2f8); border-color: #e9d5ff; border-left: 4px solid #7c3aed; }
+  .mockup-6 .gpt-icon { background: linear-gradient(135deg, #7c3aed, #db2777); }
+  .mockup-6 .gpt-title { color: #6b21a8; }
+  .mockup-6 .chip { color: #6b21a8; border-color: #e9d5ff; }
+  .mockup-6 .stat .delta { color: #7c3aed; }
+
+  /* ===========================================================
+   *  시안 7 — Sunrise (분홍·주황·노랑)
+   * =========================================================== */
+  .mockup-7 .hero {
+    background:
+      linear-gradient(135deg, #be185d 0%, #ea580c 40%, #f59e0b 80%, #fbbf24 100%);
+  }
+  .mockup-7 .logo .accent { background: linear-gradient(90deg, #fef3c7, #fed7aa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .mockup-7 .stat:hover { box-shadow: 0 10px 28px rgba(234, 88, 12, 0.18); }
+  .mockup-7 .gpt { background: linear-gradient(135deg, #fff7ed, #fef3c7); border-color: #fed7aa; border-left: 4px solid #ea580c; }
+  .mockup-7 .gpt-icon { background: linear-gradient(135deg, #be185d, #ea580c); }
+  .mockup-7 .gpt-title { color: #9a3412; }
+  .mockup-7 .chip { color: #9a3412; border-color: #fed7aa; }
+  .mockup-7 .stat .delta { color: #ea580c; }
+
+  /* ===========================================================
+   *  시안 8 — Forest (초록·사이안·블루)
+   * =========================================================== */
+  .mockup-8 .hero {
+    background:
+      linear-gradient(135deg, #064e3b 0%, #047857 30%, #0891b2 65%, #1d4ed8 100%);
+  }
+  .mockup-8 .logo .accent { background: linear-gradient(90deg, #6ee7b7, #67e8f9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .mockup-8 .stat:hover { box-shadow: 0 10px 28px rgba(4, 120, 87, 0.18); }
+  .mockup-8 .gpt { background: linear-gradient(135deg, #ecfdf5, #f0fdfa); border-color: #a7f3d0; border-left: 4px solid #047857; }
+  .mockup-8 .gpt-icon { background: linear-gradient(135deg, #047857, #0891b2); }
+  .mockup-8 .gpt-title { color: #065f46; }
+  .mockup-8 .chip { color: #065f46; border-color: #a7f3d0; }
+  .mockup-8 .stat .delta { color: #047857; }
+
+  /* ===========================================================
+   *  시안 9 — Royal (진한 남청·인디고·네이비)
+   * =========================================================== */
+  .mockup-9 .hero {
+    background:
+      linear-gradient(135deg, #0c0a4d 0%, #1e1b4b 35%, #312e81 70%, #1e40af 100%);
+  }
+  .mockup-9 .logo .accent { background: linear-gradient(90deg, #fbbf24, #fde68a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .mockup-9 .stat:hover { box-shadow: 0 10px 28px rgba(30, 27, 75, 0.18); }
+  .mockup-9 .gpt { background: linear-gradient(135deg, #f5f3ff, #eef2ff); border-color: #c7d2fe; border-left: 4px solid #312e81; }
+  .mockup-9 .gpt-icon { background: linear-gradient(135deg, #312e81, #1e40af); }
+  .mockup-9 .gpt-title { color: #312e81; }
+  .mockup-9 .chip { color: #312e81; border-color: #c7d2fe; }
+  .mockup-9 .stat .delta { color: #1e40af; }
+
+  /* ===========================================================
+   *  시안 10 — Sunset (진보라·코랄·골드)
+   * =========================================================== */
+  .mockup-10 .hero {
+    background:
+      linear-gradient(135deg, #581c87 0%, #be185d 35%, #f43f5e 70%, #f59e0b 100%);
+  }
+  .mockup-10 .logo .accent { background: linear-gradient(90deg, #fbcfe8, #fcd34d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .mockup-10 .stat:hover { box-shadow: 0 10px 28px rgba(244, 63, 94, 0.18); }
+  .mockup-10 .gpt { background: linear-gradient(135deg, #fdf4ff, #fff1f2); border-color: #fbcfe8; border-left: 4px solid #be185d; }
+  .mockup-10 .gpt-icon { background: linear-gradient(135deg, #581c87, #f43f5e); }
+  .mockup-10 .gpt-title { color: #831843; }
+  .mockup-10 .chip { color: #831843; border-color: #fbcfe8; }
+  .mockup-10 .stat .delta { color: #be185d; }
+
+  .stat .val .unit { font-size: 14px; color: #64748b; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="showcase">
+  <aside class="sc-side">
+    <h1>🌈 시안 5종 (V2)</h1>
+    <div class="sub">시안 1 톤 베이스 · 5가지 그라데이션 변주</div>
+
+    <button class="sc-btn active" data-mockup="6">
+      <div class="num">06</div>
+      <div class="name">Aurora</div>
+      <div class="desc">파랑 · 보라 · 핑크 오로라 그라데이션</div>
+    </button>
+    <button class="sc-btn" data-mockup="7">
+      <div class="num">07</div>
+      <div class="name">Sunrise</div>
+      <div class="desc">분홍 · 주황 · 노랑 일출 톤</div>
+    </button>
+    <button class="sc-btn" data-mockup="8">
+      <div class="num">08</div>
+      <div class="name">Forest</div>
+      <div class="desc">초록 · 사이안 · 블루 자연 톤</div>
+    </button>
+    <button class="sc-btn" data-mockup="9">
+      <div class="num">09</div>
+      <div class="name">Royal</div>
+      <div class="desc">남청 · 인디고 · 네이비 — 신뢰감</div>
+    </button>
+    <button class="sc-btn" data-mockup="10">
+      <div class="num">10</div>
+      <div class="name">Sunset</div>
+      <div class="desc">진보라 · 코랄 · 골드 — 따뜻함</div>
+    </button>
+
+    <div class="footer">
+      클릭으로 시안 전환.<br>
+      마음에 드는 시안 알려주면<br>
+      streamlit app에 즉시 적용.<br><br>
+      시안 1~5는 showcase.html
+    </div>
+  </aside>
+
+  <main class="sc-main">
+
+    <!-- ============== 시안 6: Aurora ============== -->
+    <section class="mockup mockup-6 active">
+      <div class="hero">
+        <div class="nav">
+          <div class="logo">One<span class="accent">Family</span> 실거래가</div>
+          <div class="nav-links"><span>검색</span><span>매물 검증</span><span>도움말</span></div>
+        </div>
+        <div class="hero-inner">
+          <span class="eyebrow">권리분석 정밀 도구 · 2026</span>
+          <h1>땅의 진짜 가치를<br>한 줄 질문으로</h1>
+          <p>매칭, 시세, 검증까지 — 권리분석의 모든 답을 한 화면에서.</p>
+          <div class="search">
+            <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+            <button>🔍 분석 시작</button>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="stats">
+          <div class="stat"><div class="label">전체 거래</div><div class="val">7,442</div><div class="delta">↑ +590 매칭 승격</div></div>
+          <div class="stat"><div class="label">정상 시세 표본</div><div class="val">40<span class="unit"> 건</span></div><div class="delta">high · 단독</div></div>
+          <div class="stat"><div class="label">평단가 중앙값</div><div class="val">42<span class="unit"> 만/평</span></div><div class="delta">원삼면 임야 1년</div></div>
+          <div class="stat"><div class="label">이상치 감지</div><div class="val">942</div><div class="delta">🔥892 · ❄️50</div></div>
+        </div>
+        <div class="section-title">OneFamily가 정리한 내용</div>
+        <div class="gpt">
+          <div class="gpt-head"><div class="gpt-icon">OF</div><div class="gpt-title">검색 의도 분석</div></div>
+          <div class="gpt-body"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b>84건</b> 매칭됐어요.</div>
+          <div class="chips">
+            <span class="chip">📍 원삼면</span>
+            <span class="chip">🏷️ 임야</span>
+            <span class="chip">💵 100만/평↓</span>
+            <span class="chip">📅 1년</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 시안 7: Sunrise ============== -->
+    <section class="mockup mockup-7">
+      <div class="hero">
+        <div class="nav">
+          <div class="logo">One<span class="accent">Family</span> 실거래가</div>
+          <div class="nav-links"><span>검색</span><span>매물 검증</span><span>도움말</span></div>
+        </div>
+        <div class="hero-inner">
+          <span class="eyebrow">자연어 토지 분석 · 2026</span>
+          <h1>한 줄로 묻고,<br>한눈에 답을 얻다</h1>
+          <p>자연어 검색 + 매물 교차 검증 + 시세 이상치 자동 감지. 권리분석의 모든 데이터.</p>
+          <div class="search">
+            <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+            <button>🔍 검색</button>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="stats">
+          <div class="stat"><div class="label">전체 거래</div><div class="val">7,442</div><div class="delta">↑ +590 매칭 승격</div></div>
+          <div class="stat"><div class="label">정상 시세 표본</div><div class="val">40<span class="unit"> 건</span></div><div class="delta">high · 단독</div></div>
+          <div class="stat"><div class="label">평단가 중앙값</div><div class="val">42<span class="unit"> 만/평</span></div><div class="delta">원삼면 임야 1년</div></div>
+          <div class="stat"><div class="label">이상치 감지</div><div class="val">942</div><div class="delta">🔥892 · ❄️50</div></div>
+        </div>
+        <div class="section-title">OneFamily가 정리한 내용</div>
+        <div class="gpt">
+          <div class="gpt-head"><div class="gpt-icon">OF</div><div class="gpt-title">검색 의도 분석</div></div>
+          <div class="gpt-body"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b>84건</b> 매칭됐어요.</div>
+          <div class="chips">
+            <span class="chip">📍 원삼면</span>
+            <span class="chip">🏷️ 임야</span>
+            <span class="chip">💵 100만/평↓</span>
+            <span class="chip">📅 1년</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 시안 8: Forest ============== -->
+    <section class="mockup mockup-8">
+      <div class="hero">
+        <div class="nav">
+          <div class="logo">One<span class="accent">Family</span> 실거래가</div>
+          <div class="nav-links"><span>검색</span><span>매물 검증</span><span>도움말</span></div>
+        </div>
+        <div class="hero-inner">
+          <span class="eyebrow">토지 데이터 인텔리전스</span>
+          <h1>당신의 땅을<br>가장 정확하게 읽다</h1>
+          <p>자연어로 묻고, 데이터로 답합니다. 7,442건의 실거래에서 시작.</p>
+          <div class="search">
+            <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+            <button>🔍 분석</button>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="stats">
+          <div class="stat"><div class="label">전체 거래</div><div class="val">7,442</div><div class="delta">↑ +590 매칭 승격</div></div>
+          <div class="stat"><div class="label">정상 시세 표본</div><div class="val">40<span class="unit"> 건</span></div><div class="delta">high · 단독</div></div>
+          <div class="stat"><div class="label">평단가 중앙값</div><div class="val">42<span class="unit"> 만/평</span></div><div class="delta">원삼면 임야 1년</div></div>
+          <div class="stat"><div class="label">이상치 감지</div><div class="val">942</div><div class="delta">🔥892 · ❄️50</div></div>
+        </div>
+        <div class="section-title">OneFamily가 정리한 내용</div>
+        <div class="gpt">
+          <div class="gpt-head"><div class="gpt-icon">OF</div><div class="gpt-title">검색 의도 분석</div></div>
+          <div class="gpt-body"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b>84건</b> 매칭됐어요.</div>
+          <div class="chips">
+            <span class="chip">📍 원삼면</span>
+            <span class="chip">🏷️ 임야</span>
+            <span class="chip">💵 100만/평↓</span>
+            <span class="chip">📅 1년</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 시안 9: Royal ============== -->
+    <section class="mockup mockup-9">
+      <div class="hero">
+        <div class="nav">
+          <div class="logo">One<span class="accent">Family</span> 실거래가</div>
+          <div class="nav-links"><span>검색</span><span>매물 검증</span><span>도움말</span></div>
+        </div>
+        <div class="hero-inner">
+          <span class="eyebrow">PROFESSIONAL EDITION · v2.0</span>
+          <h1>데이터가 말하는<br>진짜 시세를 보다</h1>
+          <p>실거래·매칭·이상치·매물 검증을 통합한 권리분석 정밀 도구.</p>
+          <div class="search">
+            <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+            <button>🔍 검색</button>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="stats">
+          <div class="stat"><div class="label">전체 거래</div><div class="val">7,442</div><div class="delta">↑ +590 매칭 승격</div></div>
+          <div class="stat"><div class="label">정상 시세 표본</div><div class="val">40<span class="unit"> 건</span></div><div class="delta">high · 단독</div></div>
+          <div class="stat"><div class="label">평단가 중앙값</div><div class="val">42<span class="unit"> 만/평</span></div><div class="delta">원삼면 임야 1년</div></div>
+          <div class="stat"><div class="label">이상치 감지</div><div class="val">942</div><div class="delta">🔥892 · ❄️50</div></div>
+        </div>
+        <div class="section-title">OneFamily가 정리한 내용</div>
+        <div class="gpt">
+          <div class="gpt-head"><div class="gpt-icon">OF</div><div class="gpt-title">검색 의도 분석</div></div>
+          <div class="gpt-body"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b>84건</b> 매칭됐어요.</div>
+          <div class="chips">
+            <span class="chip">📍 원삼면</span>
+            <span class="chip">🏷️ 임야</span>
+            <span class="chip">💵 100만/평↓</span>
+            <span class="chip">📅 1년</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== 시안 10: Sunset ============== -->
+    <section class="mockup mockup-10">
+      <div class="hero">
+        <div class="nav">
+          <div class="logo">One<span class="accent">Family</span> 실거래가</div>
+          <div class="nav-links"><span>검색</span><span>매물 검증</span><span>도움말</span></div>
+        </div>
+        <div class="hero-inner">
+          <span class="eyebrow">권리분석의 다음 세대</span>
+          <h1>자연어로 묻고,<br>지표로 확인하다</h1>
+          <p>매물 한 줄 입력으로 일치도 100점 매칭. 시세 이상치 942건 자동 감지.</p>
+          <div class="search">
+            <input placeholder="원삼면 임야 평당 100 미만 최근 1년" />
+            <button>🔍 검색</button>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="stats">
+          <div class="stat"><div class="label">전체 거래</div><div class="val">7,442</div><div class="delta">↑ +590 매칭 승격</div></div>
+          <div class="stat"><div class="label">정상 시세 표본</div><div class="val">40<span class="unit"> 건</span></div><div class="delta">high · 단독</div></div>
+          <div class="stat"><div class="label">평단가 중앙값</div><div class="val">42<span class="unit"> 만/평</span></div><div class="delta">원삼면 임야 1년</div></div>
+          <div class="stat"><div class="label">이상치 감지</div><div class="val">942</div><div class="delta">🔥892 · ❄️50</div></div>
+        </div>
+        <div class="section-title">OneFamily가 정리한 내용</div>
+        <div class="gpt">
+          <div class="gpt-head"><div class="gpt-icon">OF</div><div class="gpt-title">검색 의도 분석</div></div>
+          <div class="gpt-body"><b>원삼면</b>에서 <b>임야</b> 거래 중 <b>평단가 100만/평 미만</b>인 매물을 <b>최근 1년치</b> 정리했어요. 총 <b>84건</b> 매칭됐어요.</div>
+          <div class="chips">
+            <span class="chip">📍 원삼면</span>
+            <span class="chip">🏷️ 임야</span>
+            <span class="chip">💵 100만/평↓</span>
+            <span class="chip">📅 1년</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+  document.querySelectorAll('.sc-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.mockup;
+      document.querySelectorAll('.sc-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.mockup').forEach(m => m.classList.remove('active'));
+      document.querySelector('.mockup-' + id).classList.add('active');
+      document.querySelector('.sc-main').scrollTop = 0;
+    });
+  });
+</script>
+</body>
+</html>
