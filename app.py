@@ -1680,7 +1680,7 @@ div[role="dialog"] iframe {
   .of-narrow-wrap { max-width: 100% !important; }
 }
 
-/* 선택 필지 상세 카드 (사이드패널 안) — 좁은 폭 텍스트 기반 */
+/* 선택 필지 상세 카드 (사이드패널 안) — 좁은 폭 텍스트 기반 + 자체 스크롤 */
 .of-parcel-card {
   background: white;
   border: 1px solid rgba(15, 23, 42, 0.08);
@@ -1692,6 +1692,23 @@ div[role="dialog"] iframe {
   font-size: 12.5px;
   line-height: 1.5;
   color: #0f172a;
+  max-height: 360px;
+  overflow-y: auto;
+  /* 스크롤바 명확하게 */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+.of-parcel-card::-webkit-scrollbar { width: 8px; }
+.of-parcel-card::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 4px;
+}
+.of-parcel-card::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.of-parcel-card::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 .of-parcel-head { margin-bottom: 6px; }
 .of-parcel-jibun {
