@@ -32,6 +32,27 @@ _NAVER_MAP_COMPONENT = components.declare_component(
                        "naver_map_component"),
 )
 
+# 거래 표 양방향 컴포넌트 — 헤더 클릭 정렬 보존 + 행 클릭 양방향
+_TRADES_TABLE_COMPONENT = components.declare_component(
+    "of_trades_table",
+    path=os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "trades_table_component"),
+)
+
+
+def of_trades_table(rows, columns, selected_pnu=None,
+                     initial_sort_col=None, initial_sort_dir="desc", key=None):
+    """헤더 클릭 정렬 보존 + 행 클릭 양방향 표 컴포넌트."""
+    return _TRADES_TABLE_COMPONENT(
+        rows=rows or [],
+        columns=columns or [],
+        selected_pnu=selected_pnu,
+        initial_sort_col=initial_sort_col,
+        initial_sort_dir=initial_sort_dir,
+        default=None,
+        key=key,
+    )
+
 
 def of_naver_map(client_id, center, zoom, markers, polygons,
                   road_lines=None, sel_color="#1e40af",
@@ -56,7 +77,8 @@ from streamlit_folium import st_folium
 
 from api_keys import ANTHROPIC_KEY, VWORLD_KEY, NAVER_MAP_CLIENT_ID
 from search import (parse_query, map_road, point_to_line_m, build_period_range,
-                    lookup_reference_parcel, fill_cond_from_reference)
+                    lookup_reference_parcel, fill_cond_from_reference,
+                    parse_listing, find_parcel_candidates)
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -952,8 +974,12 @@ with st.sidebar:
         )
     with st.expander("🐛 디버그", expanded=False):
         st.caption(f"selected_pnu: `{st.session_state.get('selected_pnu')}`")
-        st.caption(f"last_map_click_sig: `{st.session_state.get('last_map_click_sig')}`")
         st.caption(f"last_table_rows: `{st.session_state.get('last_table_rows')}`")
+        st.caption(f"_of_last_map_click_ts: `{st.session_state.get('_of_last_map_click_ts')}`")
+        # 표 위젯 상태 직접 조회 (key="of_trades_table"로 보존)
+        tbl_state = st.session_state.get("of_trades_table")
+        if tbl_state is not None:
+            st.caption(f"of_trades_table.selection: `{tbl_state}`")
 
 # 간결한 헤더 — 로고 + 부제만
 st.markdown(
@@ -977,6 +1003,136 @@ query = st.text_input(
     label_visibility="collapsed",
 )
 go = st.button("🔍 검색 시작", type="primary", use_container_width=True)
+
+# ============================================================================
+#  📋 매물 교차 검증 — 외부 플랫폼에서 본 매물을 우리 DB와 일치도 점수로 매칭
+# ============================================================================
+with st.expander("📋 매물 교차 검증 — 외부 플랫폼에서 본 매물 정보를 우리 DB와 대조",
+                  expanded=False):
+    st.markdown(
+        f"<div style='font-size:13px;color:#475569;margin-bottom:8px;line-height:1.6;'>"
+        f"네이버 부동산·디스코·밸류맵 등에서 본 매물 정보를 한 줄로 입력하면 "
+        f"우리 DB의 후보 필지를 <b style='color:{BRAND_NAVY};'>일치도 점수</b>와 함께 보여줍니다. "
+        f"PNU가 확정되면 그 필지의 모든 실거래·시세를 확인할 수 있어요."
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+    listing_text = st.text_input(
+        "매물 정보",
+        placeholder=(
+            "예: 백암면 백봉리 산98 임야 11,287㎡ 3,414평 "
+            "공시지가 1㎡ 36만원 평당 121만원"
+        ),
+        label_visibility="collapsed",
+        key="of_listing_input",
+    )
+    listing_go = st.button(
+        "🔎 우리 DB에서 후보 찾기", type="secondary",
+        use_container_width=True, key="of_listing_btn",
+    )
+    if listing_go and listing_text:
+        with st.spinner("매물 정보 파싱 + DB 후보 lookup..."):
+            try:
+                client = get_client()
+                parsed = parse_listing(client, listing_text)
+            except Exception as e:
+                st.error(f"파싱 오류: {type(e).__name__}: {e}")
+                parsed = None
+            if parsed:
+                # 파싱 결과 미리 보기
+                pretty = []
+                if parsed.get("emd"): pretty.append(f"📍 {parsed['emd']}")
+                if parsed.get("ri"): pretty.append(parsed["ri"])
+                if parsed.get("jibun"):
+                    pretty.append(f"지번 **{parsed['jibun']}**")
+                if parsed.get("jimok"):
+                    pretty.append(f"지목 **{parsed['jimok']}**")
+                if parsed.get("area_m2"):
+                    pretty.append(f"{parsed['area_m2']:,.0f}㎡")
+                if parsed.get("area_pyeong"):
+                    pretty.append(f"{parsed['area_pyeong']:,.0f}평")
+                if parsed.get("jiga_per_m2"):
+                    pretty.append(f"공시 {parsed['jiga_per_m2']:,.0f}원/㎡")
+                st.caption(" · ".join(pretty) if pretty else "(인식된 필드 없음)")
+
+                # DB 후보 lookup
+                conn_listing = get_conn()
+                candidates = find_parcel_candidates(conn_listing, parsed)
+                st.session_state._of_listing_candidates = candidates
+                st.session_state._of_listing_parsed = parsed
+            else:
+                st.session_state._of_listing_candidates = None
+
+    # 결과 카드 (rerun에도 보존)
+    candidates = st.session_state.get("_of_listing_candidates")
+    if candidates is not None:
+        if not candidates:
+            st.warning(
+                "조건에 맞는 후보가 없어요. 더 자세한 정보를 입력하거나 "
+                "지번·면적·공시지가 중 하나만 입력해보세요."
+            )
+        else:
+            st.markdown(
+                f"<div style='margin-top:8px;font-weight:600;font-size:13px;"
+                f"color:{BRAND_NAVY_DEEP};'>📊 일치도 상위 후보 "
+                f"{len(candidates)}개</div>",
+                unsafe_allow_html=True,
+            )
+            for i, (score, breakdown, parc) in enumerate(candidates):
+                py = parc["area_m2"] / PYEONG_PER_M2 if parc["area_m2"] else 0
+                pct = min(100, int(score))  # 최대 100점
+                card_color = (BRAND_NAVY if pct >= 80
+                              else "#f59e0b" if pct >= 50
+                              else "#94a3b8")
+                with st.container(border=True):
+                    head_cols = st.columns([3, 1, 1])
+                    with head_cols[0]:
+                        st.markdown(
+                            f"**{parc['jibun']}** "
+                            f"<span style='color:#64748b;'>({parc['jimok']}, "
+                            f"{int(parc['area_m2']):,}㎡ · {py:,.0f}평)</span>",
+                            unsafe_allow_html=True,
+                        )
+                        sub_bits = [f"PNU `{parc['pnu']}`"]
+                        if parc.get("jiga"):
+                            sub_bits.append(
+                                f"공시 {int(parc['jiga']):,}원/㎡")
+                        if parc.get("shape_type"):
+                            sub_bits.append(f"형상 {parc['shape_type']}")
+                        if parc.get("has_road_access") == 1:
+                            sub_bits.append("도로 접면")
+                        elif parc.get("has_road_access") == 0:
+                            sub_bits.append("맹지")
+                        st.caption(" · ".join(sub_bits))
+                        st.caption("점수: " + " · ".join(breakdown))
+                    with head_cols[1]:
+                        st.markdown(
+                            f"<div style='text-align:center;padding:8px 0;'>"
+                            f"<div style='font-size:11px;color:#64748b;"
+                            f"text-transform:uppercase;letter-spacing:0.04em;'>"
+                            f"일치도</div>"
+                            f"<div style='font-size:24px;font-weight:700;"
+                            f"color:{card_color};'>{pct}%</div></div>",
+                            unsafe_allow_html=True,
+                        )
+                    with head_cols[2]:
+                        if st.button(
+                            "📄 거래 보기",
+                            key=f"of_listing_pick_{parc['pnu']}",
+                            use_container_width=True,
+                        ):
+                            # 그 PNU 선택 → 메인 dialog 자동 open
+                            st.session_state.selected_pnu = parc["pnu"]
+                            st.session_state._dialog_shown_for = None
+                            # 검색 결과 없어도 PNU 정보·거래는 sidebar에서 안 보이므로
+                            # result도 비워두고 dialog만 띄움
+                            # 단 dialog는 결과 영역 안에서만 호출되므로
+                            # 사용자에게 안내
+                            st.toast(
+                                f"선택됨: {parc['jibun']}  "
+                                f"아래 결과 영역의 dialog 또는 새 검색 시 표시됩니다."
+                            )
+                            st.rerun()
 
 if go and query:
     with st.spinner("자연어 분석 + 검색 중... (5초 정도)"):
@@ -1098,10 +1254,20 @@ if "result" in st.session_state:
     # 이전 rerun에서 결정된 selected_pnu (지도·표 그리기에 사용)
     prev_selected_pnu = st.session_state.get("selected_pnu")
 
-    # 선택된 PNU가 있으면 그 필지의 모든 거래 원본 데이터 카드 표시
-    if prev_selected_pnu:
-        sel_conn = get_conn()
-        sel_trades = list(sel_conn.execute(
+    # 선택된 PNU의 거래 상세를 dialog(팝업)로 표시
+    @st.dialog("📄 선택 필지 · 실거래 상세", width="large")
+    def show_parcel_dialog(pnu):
+        sel_conn2 = get_conn()
+        sel_parcel2 = sel_conn2.execute(
+            """
+            SELECT pnu, jibun, jimok, area_m2, jiga, addr,
+                   elevation_m, slope_deg, has_road_access,
+                   shape_type, zone_type, prefix8
+            FROM parcels WHERE pnu = ?
+            """,
+            (pnu,),
+        ).fetchone()
+        sel_trades2 = list(sel_conn2.execute(
             """
             SELECT id, sigg_cd, umd_name, jimok, area_m2, jibun_masked, is_san,
                    deal_amount, deal_year, deal_month, deal_day, deal_ymd,
@@ -1112,138 +1278,143 @@ if "result" in st.session_state:
             FROM trades WHERE resolved_pnu = ?
             ORDER BY deal_ymd DESC
             """,
-            (prev_selected_pnu,),
+            (pnu,),
         ))
-        sel_parcel = sel_conn.execute(
-            """
-            SELECT pnu, jibun, jimok, area_m2, jiga, addr,
-                   elevation_m, slope_deg, has_road_access,
-                   shape_type, zone_type, prefix8
-            FROM parcels WHERE pnu = ?
-            """,
-            (prev_selected_pnu,),
-        ).fetchone()
-
-        n_trades = len(sel_trades)
-        with st.container(border=True):
-            head_cols = st.columns([3, 1])
-            with head_cols[0]:
-                if sel_parcel:
-                    py = (sel_parcel["area_m2"] / PYEONG_PER_M2
-                          if sel_parcel["area_m2"] else 0)
-                    st.markdown(
-                        f"### 📄 선택 필지: **{sel_parcel['jibun']}** "
-                        f"({sel_parcel['jimok']}, "
-                        f"{int(sel_parcel['area_m2']):,}㎡ · {py:,.0f}평)"
-                    )
-                    addr = sel_parcel["addr"] or ""
-                    sub_bits = []
-                    if addr: sub_bits.append(addr)
-                    sub_bits.append(f"PNU `{prev_selected_pnu}`")
-                    sub_bits.append(f"거래 **{n_trades}건** 매칭됨")
-                    st.caption(" · ".join(sub_bits))
-                else:
-                    st.markdown(f"### 📄 선택 PNU: `{prev_selected_pnu}`")
-            with head_cols[1]:
-                if st.button("✕ 선택 해제", use_container_width=True,
-                             key="clear_selection"):
-                    st.session_state.selected_pnu = None
-                    st.session_state.last_table_rows = []
-                    st.rerun()
-
-            # 필지 기본 정보 행
-            if sel_parcel:
-                info_cols = st.columns(6)
-                info_cols[0].metric(
-                    "공시지가",
-                    f"{int(sel_parcel['jiga']):,}원/㎡" if sel_parcel['jiga'] else "—",
-                )
-                info_cols[1].metric(
-                    "해발",
-                    f"{sel_parcel['elevation_m']:.0f}m"
-                    if sel_parcel["elevation_m"] is not None else "—",
-                )
-                info_cols[2].metric(
-                    "경사",
-                    f"{sel_parcel['slope_deg']:.1f}°"
-                    if sel_parcel["slope_deg"] is not None else "—",
-                )
-                info_cols[3].metric(
-                    "도로 접면",
-                    "접면" if sel_parcel["has_road_access"] == 1
-                    else ("맹지" if sel_parcel["has_road_access"] == 0 else "—"),
-                )
-                info_cols[4].metric("형상", sel_parcel["shape_type"] or "—")
-                info_cols[5].metric("용도지역", sel_parcel["zone_type"] or "—")
-
-            # 거래 원본 데이터 (API 그대로)
+        if sel_parcel2:
+            py = (sel_parcel2["area_m2"] / PYEONG_PER_M2
+                  if sel_parcel2["area_m2"] else 0)
             st.markdown(
-                f"<div style='margin-top:14px;font-weight:600;"
-                f"color:{BRAND_NAVY_DEEP};font-size:13.5px;'>"
-                f"📋 국토부 토지매매 실거래 원본 데이터</div>",
-                unsafe_allow_html=True,
+                f"### **{sel_parcel2['jibun']}** "
+                f"({sel_parcel2['jimok']}, "
+                f"{int(sel_parcel2['area_m2']):,}㎡ · {py:,.0f}평)"
             )
-            for i, t in enumerate(sel_trades):
-                with st.expander(
-                    f"#{i+1}  {t['deal_ymd'][:10]}  "
-                    f"{t['deal_amount']:,}만원  "
-                    f"{t['area_m2']:,.0f}㎡  "
-                    f"mask=`{t['jibun_masked']}`  "
-                    f"[{t['match_confidence']}]",
-                    expanded=(i == 0),
-                ):
-                    raw_cols = st.columns(2)
-                    with raw_cols[0]:
-                        st.markdown(
-                            "<b style='font-size:12px;color:#475569;'>"
-                            "▌ API 원본 (국토부)</b>",
-                            unsafe_allow_html=True,
-                        )
-                        api_raw = {
-                            "sggCd (시군구코드)": t["sigg_cd"],
-                            "umdNm (법정동)": t["umd_name"],
-                            "jimok (지목)": t["jimok"],
-                            "dealArea (거래면적㎡)": t["area_m2"],
-                            "jibun (지번-원본 별표)":
-                                ("산 " if t["is_san"] else "") + (t["jibun_masked"] or ""),
-                            "dealAmount (거래금액 만원)": t["deal_amount"],
-                            "dealYear/Month/Day":
-                                f"{t['deal_year']} / {t['deal_month']} / {t['deal_day']}",
-                            "landUse (용도지역)": t["land_use"] or "—",
-                            "dealingGbn (거래유형)": t["dealing_gbn"] or "—",
-                        }
-                        for k, v in api_raw.items():
-                            st.markdown(
-                                f"<div style='font-size:13px;line-height:1.7;'>"
-                                f"<span style='color:#64748b;'>{k}</span>: "
-                                f"<b>{v}</b></div>",
-                                unsafe_allow_html=True,
-                            )
-                    with raw_cols[1]:
-                        st.markdown(
-                            "<b style='font-size:12px;color:#475569;'>"
-                            "▌ OneFamily 복원·매칭 결과</b>",
-                            unsafe_allow_html=True,
-                        )
-                        of_data = {
-                            "복원 지번": t["resolved_jibun"] or "—",
-                            "PNU (19자리)": t["resolved_pnu"] or "—",
-                            "매칭 신뢰도": t["match_confidence"],
-                            "후보 수": t["candidates_count"],
-                            "평단가": (f"{t['unit_per_pyeong']:,.0f} 만원/평"
-                                      if t["unit_per_pyeong"] else "—"),
-                            "필지 공시지가": (f"{t['resolved_jiga']:,.0f} 원/㎡"
-                                            if t["resolved_jiga"] else "—"),
-                            "공유지분 라벨": t["share_label"] or "정상매칭",
-                        }
-                        for k, v in of_data.items():
-                            st.markdown(
-                                f"<div style='font-size:13px;line-height:1.7;'>"
-                                f"<span style='color:#64748b;'>{k}</span>: "
-                                f"<b>{v}</b></div>",
-                                unsafe_allow_html=True,
-                            )
+            addr = sel_parcel2["addr"] or ""
+            sub_bits = []
+            if addr: sub_bits.append(addr)
+            sub_bits.append(f"PNU `{pnu}`")
+            sub_bits.append(f"거래 **{len(sel_trades2)}건** 매칭")
+            st.caption(" · ".join(sub_bits))
+
+            # 필지 기본 정보 6 메트릭
+            info_cols = st.columns(3)
+            info_cols[0].metric(
+                "공시지가",
+                f"{int(sel_parcel2['jiga']):,}원/㎡" if sel_parcel2['jiga'] else "—",
+            )
+            info_cols[1].metric(
+                "해발",
+                f"{sel_parcel2['elevation_m']:.0f}m"
+                if sel_parcel2["elevation_m"] is not None else "—",
+            )
+            info_cols[2].metric(
+                "경사",
+                f"{sel_parcel2['slope_deg']:.1f}°"
+                if sel_parcel2["slope_deg"] is not None else "—",
+            )
+            info_cols2 = st.columns(3)
+            info_cols2[0].metric(
+                "도로 접면",
+                "접면" if sel_parcel2["has_road_access"] == 1
+                else ("맹지" if sel_parcel2["has_road_access"] == 0 else "—"),
+            )
+            info_cols2[1].metric("형상", sel_parcel2["shape_type"] or "—")
+            info_cols2[2].metric("용도지역", sel_parcel2["zone_type"] or "—")
+
+            # 형상 의심 경고 — 매우 길쭉한 작은 임야는 V-World가 임야로 분류해도
+            # 실제 도로/구거일 가능성이 있음 (J 같은 권리분석자에게 중요한 신호)
+            try:
+                asp = sel_parcel2["shape_aspect"]
+            except (KeyError, IndexError):
+                asp = None
+            if (asp is not None and asp > 0
+                    and asp < 0.2
+                    and sel_parcel2["area_m2"]
+                    and sel_parcel2["area_m2"] < 100
+                    and sel_parcel2["jimok"] == "임야"):
+                ratio = 1.0 / asp
+                st.warning(
+                    f"⚠️ **형상 의심** — 폴리곤 길이/너비 비율 약 1:{ratio:.1f}로 "
+                    f"매우 길쭉하고 면적이 작아요({int(sel_parcel2['area_m2'])}㎡). "
+                    f"V-World 분류는 **'{sel_parcel2['jimok']}'**이지만 "
+                    f"실제는 **도로·구거·하천 가능성**도 있어요. "
+                    f"현장 확인·등기부 확인을 권장합니다."
+                )
+        else:
+            st.markdown(f"### PNU `{pnu}`")
+
         st.divider()
+        st.markdown(
+            f"<div style='font-weight:600;color:{BRAND_NAVY_DEEP};"
+            f"font-size:13.5px;margin-bottom:6px;'>"
+            f"📋 국토부 토지매매 실거래 원본 데이터</div>",
+            unsafe_allow_html=True,
+        )
+        for i, t in enumerate(sel_trades2):
+            with st.expander(
+                f"#{i+1}  {t['deal_ymd'][:10]}  "
+                f"{t['deal_amount']:,}만원  "
+                f"{t['area_m2']:,.0f}㎡  "
+                f"mask=`{t['jibun_masked']}`  "
+                f"[{t['match_confidence']}]",
+                expanded=(i == 0),
+            ):
+                raw_cols = st.columns(2)
+                with raw_cols[0]:
+                    st.markdown(
+                        "<b style='font-size:12px;color:#475569;'>"
+                        "▌ API 원본 (국토부)</b>",
+                        unsafe_allow_html=True,
+                    )
+                    api_raw = {
+                        "sggCd (시군구코드)": t["sigg_cd"],
+                        "umdNm (법정동)": t["umd_name"],
+                        "jimok (지목)": t["jimok"],
+                        "dealArea (거래면적㎡)": t["area_m2"],
+                        "jibun (지번-원본 별표)":
+                            ("산 " if t["is_san"] else "") + (t["jibun_masked"] or ""),
+                        "dealAmount (거래금액 만원)": t["deal_amount"],
+                        "dealYear/Month/Day":
+                            f"{t['deal_year']} / {t['deal_month']} / {t['deal_day']}",
+                        "landUse (용도지역)": t["land_use"] or "—",
+                        "dealingGbn (거래유형)": t["dealing_gbn"] or "—",
+                    }
+                    for k, v in api_raw.items():
+                        st.markdown(
+                            f"<div style='font-size:13px;line-height:1.7;'>"
+                            f"<span style='color:#64748b;'>{k}</span>: "
+                            f"<b>{v}</b></div>",
+                            unsafe_allow_html=True,
+                        )
+                with raw_cols[1]:
+                    st.markdown(
+                        "<b style='font-size:12px;color:#475569;'>"
+                        "▌ OneFamily 복원·매칭 결과</b>",
+                        unsafe_allow_html=True,
+                    )
+                    of_data = {
+                        "복원 지번": t["resolved_jibun"] or "—",
+                        "PNU (19자리)": t["resolved_pnu"] or "—",
+                        "매칭 신뢰도": t["match_confidence"],
+                        "후보 수": t["candidates_count"],
+                        "평단가": (f"{t['unit_per_pyeong']:,.0f} 만원/평"
+                                  if t["unit_per_pyeong"] else "—"),
+                        "필지 공시지가": (f"{t['resolved_jiga']:,.0f} 원/㎡"
+                                        if t["resolved_jiga"] else "—"),
+                        "공유지분 라벨": t["share_label"] or "정상매칭",
+                    }
+                    for k, v in of_data.items():
+                        st.markdown(
+                            f"<div style='font-size:13px;line-height:1.7;'>"
+                            f"<span style='color:#64748b;'>{k}</span>: "
+                            f"<b>{v}</b></div>",
+                            unsafe_allow_html=True,
+                        )
+
+    # PNU 변경된 직후에만 dialog open (한 번만 트리거 → 사용자가 ✕로 닫을 수 있음)
+    if prev_selected_pnu and \
+            st.session_state.get("_dialog_shown_for") != prev_selected_pnu:
+        st.session_state._dialog_shown_for = prev_selected_pnu
+        show_parcel_dialog(prev_selected_pnu)
 
     col_map, col_table = st.columns([1, 1])
 
@@ -1417,6 +1588,7 @@ if "result" in st.session_state:
                 if clicked_pnu != st.session_state.get("selected_pnu"):
                     st.session_state.selected_pnu = clicked_pnu
                     st.session_state.last_table_rows = []
+                    st.session_state._dialog_shown_for = None  # dialog 재오픈
                     st.rerun()
 
         if len(results) > max_pins:
@@ -1487,80 +1659,75 @@ if "result" in st.session_state:
         )
         st.caption(
             "💡 헤더 클릭으로 정렬 (오름차 ↔ 내림차)  ·  "
-            "행 클릭 시 지도에서 그 필지가 확대·강조됨"
+            "행 클릭 시 거래 상세 팝업 + 지도 확대"
         )
 
         df_display = df.head(500).copy().reset_index(drop=True)
 
-        # 선택된 PNU가 있고 5번째 행 아래에 있다면 5번째 위치로 이동
-        # (정렬: [그 위 4건] + [선택 행] + [표시 안 됐던 위쪽] + [나머지 아래])
-        if prev_selected_pnu:
-            matches = df_display.index[
-                df_display["PNU"] == prev_selected_pnu
-            ].tolist()
-            if matches:
-                sel_idx = matches[0]
-                if sel_idx > 4:
-                    new_order = (
-                        list(range(sel_idx - 4, sel_idx + 1))
-                        + list(range(0, sel_idx - 4))
-                        + list(range(sel_idx + 1, len(df_display)))
-                    )
-                    df_display = (
-                        df_display.iloc[new_order].reset_index(drop=True)
-                    )
+        # 자체 표 컴포넌트 호출 (헤더 정렬·행 선택 모두 컴포넌트 내부 state)
+        # 컬럼 정의 — type 추론은 컴포넌트가 자동, 명시도 가능
+        table_columns = []
+        for col in df_display.columns:
+            is_num = col in (
+                "거리(m)", "면적(㎡)", "면적(평)", "금액(만원)",
+                "평단가(만원/평)",
+            )
+            table_columns.append({
+                "name": col,
+                "type": "number" if is_num else "string",
+                "visible": (col != "PNU"),   # PNU는 데이터에는 있고 헤더에서 숨김
+            })
 
-        # selected_pnu가 있을 때 그 행 노란 배경
-        def highlight_selected(row):
-            if prev_selected_pnu and row.get("PNU") == prev_selected_pnu:
-                return ["background-color: #fef08a; font-weight: bold"] * len(row)
-            return [""] * len(row)
+        # rows를 dict 리스트로 (JSON 직렬화)
+        table_rows = []
+        for _, row in df_display.iterrows():
+            d = {}
+            for col in df_display.columns:
+                v = row[col]
+                # NaN → None, numpy int/float → python
+                if pd.isna(v):
+                    d[col] = None
+                elif hasattr(v, "item"):
+                    d[col] = v.item()
+                else:
+                    d[col] = v
+            table_rows.append(d)
 
-        styled = df_display.style.apply(highlight_selected, axis=1)
+        # 정렬 초기값 — 검색 sort_by 기반 (헤더 한 번 누르면 그쪽 정렬됨)
+        sort_by = result.get("sort_by") or "deal_ymd"
+        sort_order = (result.get("sort_order") or "desc").lower()
+        col_map = {
+            "deal_ymd": "시기",
+            "deal_amount": "금액(만원)",
+            "area_m2": "면적(㎡)",
+            "unit_per_pyeong": "평단가(만원/평)",
+        }
+        initial_sort_col = col_map.get(sort_by)
+        initial_sort_dir = "asc" if sort_order == "asc" else "desc"
 
-        event = st.dataframe(
-            styled,
-            use_container_width=True,
-            height=450,
-            hide_index=True,
-            on_select="rerun",
-            selection_mode="single-row",
+        table_event = of_trades_table(
+            rows=table_rows,
+            columns=table_columns,
+            selected_pnu=prev_selected_pnu,
+            initial_sort_col=initial_sort_col,
+            initial_sort_dir=initial_sort_dir,
+            key="of_trades_table",
         )
+
         if len(results) > 500:
             st.caption(
                 f"※ 표에는 최대 500건만. 전체 {len(results):,}건은 엑셀로."
             )
 
-    # 표 selection 변경 감지 (사용자가 새로 클릭한 건지, 이전 selection 유지인지)
-    try:
-        sel_rows = list(event.selection.rows)
-    except AttributeError:
-        try:
-            sel_rows = list(event["selection"]["rows"])
-        except (KeyError, TypeError):
-            sel_rows = []
-
-    prev_table_rows = st.session_state.get("last_table_rows", [])
-    table_changed = sel_rows != prev_table_rows
-    new_pnu_from_table = None
-    if table_changed:
-        st.session_state.last_table_rows = sel_rows
-        if sel_rows:
-            try:
-                v = df_display.iloc[sel_rows[0]]["PNU"]
-                if v:
-                    new_pnu_from_table = v
-            except (IndexError, KeyError):
-                pass
-
-    # 우선순위: 새 지도 클릭 → 새 표 클릭 → 이전 유지
-    if new_pnu_from_map is not None:
-        new_sel = new_pnu_from_map
-    elif table_changed:
-        new_sel = new_pnu_from_table  # None이면 선택 해제됨
-    else:
-        new_sel = prev_selected_pnu
-
-    if new_sel != prev_selected_pnu:
-        st.session_state.selected_pnu = new_sel
-        st.rerun()
+    # 표 행 클릭 → PNU 동기화 (양방향)
+    if isinstance(table_event, dict) and table_event.get("type") == "row_click":
+        clicked_pnu = table_event.get("pnu")
+        last_click_ts = st.session_state.get("_of_last_table_click_ts")
+        this_ts = table_event.get("ts")
+        if clicked_pnu and this_ts != last_click_ts:
+            st.session_state._of_last_table_click_ts = this_ts
+            if clicked_pnu != st.session_state.get("selected_pnu"):
+                st.session_state.selected_pnu = clicked_pnu
+                # dialog 다시 띄우기 위해 _dialog_shown_for 리셋
+                st.session_state._dialog_shown_for = None
+                st.rerun()

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body, html {
+    margin: 0; padding: 0;
+    font-family: system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+    background: white;
+  }
+  #wrap {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  }
+  #scroll {
+    max-height: 450px;
+    overflow-y: auto;
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+  }
+  thead th {
+    position: sticky; top: 0; z-index: 2;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0.01em;
+    padding: 9px 10px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { background: #eff6ff; color: #1d4ed8; }
+  thead th.sorted { background: #eff6ff; color: #1d4ed8; }
+  thead th .arrow {
+    display: inline-block; margin-left: 4px;
+    opacity: 0.5; font-size: 10px;
+  }
+  thead th.sorted .arrow { opacity: 1; }
+  tbody td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1f2937;
+    white-space: nowrap;
+  }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: #f8fafc; }
+  tbody tr.selected td {
+    background: #fef9c3 !important;   /* 노란 강조 */
+    font-weight: 600;
+  }
+  tbody tr.conf-mid td { color: #475569; }
+  tbody tr.conf-low td { color: #94a3b8; }
+  .conf-pill {
+    display: inline-block; padding: 1px 7px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 600;
+  }
+  .conf-pill.high { background: #dcfce7; color: #166534; }
+  .conf-pill.mid  { background: #fef3c7; color: #92400e; }
+  .conf-pill.low  { background: #f1f5f9; color: #64748b; }
+  .group-pill {
+    display: inline-block; padding: 1px 7px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 500;
+    background: #eff6ff; color: #1d4ed8;
+  }
+  .empty {
+    padding: 30px; text-align: center; color: #94a3b8; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap"><div id="scroll"><table id="tbl"><thead></thead><tbody></tbody></table></div></div>
+<script>
+// ============================================================================
+//  Streamlit Component Bridge (vanilla JS)
+// ============================================================================
+function sendMessageToStreamlitClient(type, data) {
+  const out = Object.assign({ isStreamlitMessage: true, type: type }, data || {});
+  window.parent.postMessage(out, "*");
+}
+const Streamlit = {
+  setComponentReady: function() {
+    sendMessageToStreamlitClient("streamlit:componentReady", { apiVersion: 1 });
+  },
+  setFrameHeight: function(h) {
+    sendMessageToStreamlitClient("streamlit:setFrameHeight", { height: h });
+  },
+  setComponentValue: function(v) {
+    sendMessageToStreamlitClient("streamlit:setComponentValue", {
+      value: v,
+      dataType: (typeof v === "object" && v !== null) ? "json" : "string",
+    });
+  },
+  RENDER_EVENT: "streamlit:render",
+  events: {
+    addEventListener: function(type, cb) {
+      window.addEventListener("message", function(event) {
+        if (event.data && event.data.type === type) {
+          cb({ detail: event.data });
+        }
+      });
+    }
+  }
+};
+
+// ============================================================================
+//  표 상태 — 정렬은 컴포넌트 내부에 유지 → rerun에도 보존
+// ============================================================================
+let _rows = [];
+let _columns = [];
+let _selectedPnu = null;
+let _sortCol = null;   // 정렬 컬럼 name
+let _sortDir = "desc"; // "asc" | "desc"
+let _initialized = false;
+
+function inferType(col, rows) {
+  // columns에 type 명시 있으면 그것 우선
+  if (col.type) return col.type;
+  // 샘플로 추론
+  for (let i = 0; i < Math.min(rows.length, 20); i++) {
+    const v = rows[i][col.name];
+    if (v === null || v === undefined || v === "") continue;
+    if (typeof v === "number") return "number";
+    if (typeof v === "string" && /^-?\d+(\.\d+)?$/.test(v)) return "number";
+    return "string";
+  }
+  return "string";
+}
+
+function compareValues(a, b, type) {
+  if (a === null || a === undefined || a === "") return 1;   // null은 항상 뒤
+  if (b === null || b === undefined || b === "") return -1;
+  if (type === "number") {
+    const na = (typeof a === "number") ? a : parseFloat(a);
+    const nb = (typeof b === "number") ? b : parseFloat(b);
+    return na - nb;
+  }
+  return String(a).localeCompare(String(b), "ko");
+}
+
+function sortRows() {
+  if (!_sortCol) return _rows.slice();
+  const colDef = _columns.find(c => c.name === _sortCol);
+  if (!colDef) return _rows.slice();
+  const type = inferType(colDef, _rows);
+  const dir = _sortDir === "asc" ? 1 : -1;
+  return _rows.slice().sort(function(a, b) {
+    return dir * compareValues(a[_sortCol], b[_sortCol], type);
+  });
+}
+
+function formatCell(value, col, rowData) {
+  if (value === null || value === undefined || value === "") return "—";
+  // 컬럼별 특수 렌더
+  if (col.name === "신뢰도") {
+    const v = String(value);
+    return '<span class="conf-pill ' + v + '">' + v + '</span>';
+  }
+  if (col.name === "그룹") {
+    return '<span class="group-pill">' + value + '</span>';
+  }
+  if (col.type === "number" || typeof value === "number") {
+    // 천단위 컴마
+    const n = typeof value === "number" ? value : parseFloat(value);
+    if (Number.isFinite(n)) {
+      // 소수점 있으면 1자리, 없으면 정수
+      if (Math.abs(n) < 1 || (n % 1 !== 0)) {
+        return n.toLocaleString("ko", { maximumFractionDigits: 1 });
+      }
+      return n.toLocaleString("ko");
+    }
+  }
+  return String(value);
+}
+
+function isNumericCol(col) {
+  if (col.type) return col.type === "number";
+  // 헤더명으로 추론
+  const name = col.name;
+  return /(\(㎡\)|\(평\)|\(만원\)|\(만원\/평\)|면적|금액|평단가|거리|m\)$)/.test(name);
+}
+
+function render() {
+  const thead = document.querySelector("#tbl thead");
+  const tbody = document.querySelector("#tbl tbody");
+  thead.innerHTML = "";
+  tbody.innerHTML = "";
+
+  if (!_rows.length) {
+    tbody.innerHTML = '<tr><td colspan="' + _columns.length +
+      '" class="empty">조건에 맞는 거래가 없어요</td></tr>';
+    return;
+  }
+
+  // 헤더
+  const trH = document.createElement("tr");
+  _columns.forEach(function(col) {
+    const th = document.createElement("th");
+    th.textContent = col.name;
+    if (isNumericCol(col)) th.style.textAlign = "right";
+    const arrow = document.createElement("span");
+    arrow.className = "arrow";
+    if (_sortCol === col.name) {
+      th.classList.add("sorted");
+      arrow.textContent = _sortDir === "asc" ? "▲" : "▼";
+    } else {
+      arrow.textContent = "↕";
+    }
+    th.appendChild(arrow);
+    th.onclick = function() {
+      if (_sortCol === col.name) {
+        _sortDir = _sortDir === "asc" ? "desc" : "asc";
+      } else {
+        _sortCol = col.name;
+        _sortDir = "desc";
+      }
+      render();
+    };
+    trH.appendChild(th);
+  });
+  thead.appendChild(trH);
+
+  // 본문
+  const sorted = sortRows();
+  sorted.forEach(function(row) {
+    const tr = document.createElement("tr");
+    const conf = row["신뢰도"];
+    if (conf === "mid") tr.classList.add("conf-mid");
+    if (conf === "low") tr.classList.add("conf-low");
+    if (_selectedPnu && row["PNU"] === _selectedPnu) {
+      tr.classList.add("selected");
+    }
+    _columns.forEach(function(col) {
+      const td = document.createElement("td");
+      if (isNumericCol(col)) td.className = "num";
+      td.innerHTML = formatCell(row[col.name], col, row);
+      tr.appendChild(td);
+    });
+    tr.onclick = function() {
+      const pnu = row["PNU"];
+      if (pnu) {
+        Streamlit.setComponentValue({
+          type: "row_click", pnu: pnu, ts: Date.now()
+        });
+      }
+    };
+    tbody.appendChild(tr);
+  });
+}
+
+Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, function(event) {
+  const args = (event.detail && event.detail.args) || {};
+  _rows = args.rows || [];
+  _columns = args.columns || [];
+  _selectedPnu = args.selected_pnu || null;
+  if (!_initialized) {
+    _initialized = true;
+    _sortCol = args.initial_sort_col || null;
+    _sortDir = args.initial_sort_dir || "desc";
+  }
+  // 데이터에 PNU 컬럼 없으면 헤더에서 숨김 (시각적으로만)
+  // 정렬·선택을 위해 데이터에는 유지하되 헤더에서 제외
+  _columns = _columns.filter(c => c.name !== "PNU" || c.visible !== false);
+  render();
+  Streamlit.setFrameHeight(490);
+});
+
+Streamlit.setComponentReady();
+Streamlit.setFrameHeight(490);
+</script>
+</body>
+</html>

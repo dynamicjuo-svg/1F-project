@@ -18,13 +18,14 @@
   }
   .marker-label {
     margin-left: 6px;
-    background: rgba(255,255,255,0.92);
-    padding: 1px 6px;
-    border-radius: 3px;
-    font-size: 11px; font-weight: 500;
+    background: rgba(255,255,255,0.95);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px; font-weight: 600;
     color: #1f2937; white-space: nowrap;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.18);
     display: none;
+    border: 1px solid rgba(0,0,0,0.06);
   }
   .marker-label.show { display: inline-block; }
   #of-error {
@@ -36,7 +37,7 @@
 <div id="map"></div>
 <script>
 // ============================================================================
-//  Streamlit Component Bridge (vanilla JS, no external lib)
+//  Streamlit Component Bridge
 // ============================================================================
 function sendMessageToStreamlitClient(type, data) {
   const out = Object.assign({ isStreamlitMessage: true, type: type }, data || {});
@@ -68,7 +69,7 @@ const Streamlit = {
 };
 
 // ============================================================================
-//  지도 상태 — 한 번만 렌더, 재 렌더 시 데이터만 교체
+//  지도 상태
 // ============================================================================
 let _sdkLoaded = false;
 let _map = null;
@@ -84,8 +85,7 @@ function loadSDK(clientId, cb) {
   s.onload = function() { _sdkLoaded = true; cb(); };
   s.onerror = function() {
     document.getElementById("map").innerHTML =
-      '<div id="of-error"><b>네이버 지도 SDK 로드 실패</b><br>'
-      + '키 또는 네트워크를 확인하세요.<br>'
+      '<div id="of-error"><b>네이버 지도 SDK 로드 실패</b><br>키/네트워크 확인.<br>'
       + 'Client ID: <code>' + clientId + '</code></div>';
   };
   document.head.appendChild(s);
@@ -98,20 +98,6 @@ function clearOverlays() {
   _drawnMarkers = [];
   _drawnRoadLines.forEach(l => l.setMap(null));
   _drawnRoadLines = [];
-}
-
-function jimokColor(j) {
-  const map = {
-    "전": "#84cc16", "답": "#65a30d", "과수원": "#15803d", "목장용지": "#10b981",
-    "임야": "#16a34a", "대": "#f97316", "공장용지": "#7c3aed", "창고용지": "#6366f1",
-    "주차장": "#64748b", "주유소용지": "#a855f7", "도로": "#9ca3af", "철도용지": "#71717a",
-    "제방": "#0ea5e9", "하천": "#0284c7", "구거": "#0369a1", "유지": "#06b6d4",
-    "수도용지": "#22d3ee", "공원": "#14b8a6", "체육용지": "#34d399",
-    "유원지": "#fbbf24", "종교용지": "#fb7185", "사적지": "#a16207",
-    "묘지": "#525252", "잡종지": "#d4d4d8", "광천지": "#8b5cf6", "염전": "#0891b2",
-    "학교용지": "#ef4444", "양어장": "#0e7490",
-  };
-  return map[j] || "#6b7280";
 }
 
 function renderMap(args) {
@@ -157,7 +143,6 @@ function renderMap(args) {
       borderWidth: 0, anchorSize: new naver.maps.Size(0, 0),
       pixelOffset: new naver.maps.Point(0, -8),
     });
-    // 클릭 → 부모로 PNU 전송 (양방향 핵심)
     naver.maps.Event.addListener(polygon, 'click', function(e) {
       Streamlit.setComponentValue({ type: 'pnu_click', pnu: p.pnu, ts: Date.now() });
       info.open(map, e.coord);
@@ -214,7 +199,7 @@ function renderMap(args) {
     });
   });
 
-  // 라벨 줌 토글
+  // 라벨 — 줌 임계 기반 토글
   function updateLabels() {
     const show = map.getZoom() >= ZOOM_THRESHOLD;
     document.querySelectorAll('.marker-label').forEach(function(el) {
@@ -224,7 +209,7 @@ function renderMap(args) {
   }
   updateLabels();
 
-  // CadastralLayer + 토글 버튼 (한 번만 생성)
+  // CadastralLayer + 토글 버튼 + 줌 이벤트 (한 번만)
   if (!_cadastralLayer) {
     _cadastralLayer = new naver.maps.CadastralLayer();
     _cadastralLayer.setMap(map);
@@ -265,7 +250,7 @@ function renderMap(args) {
     refreshCad();
   }
 
-  // 선택된 필지 자동 fitBounds (필지 모양대로 줌)
+  // 선택된 필지 자동 fitBounds
   const selP = polygons.find(function(p) { return p.is_selected; });
   if (selP) {
     const bounds = new naver.maps.LatLngBounds();
@@ -276,7 +261,8 @@ function renderMap(args) {
     setTimeout(function() {
       const z = map.getZoom();
       if (z > 20) map.setZoom(20);
-    }, 100);
+      updateLabels();
+    }, 150);
   }
 }
 
@@ -300,13 +286,11 @@ function onFirstRender(args) {
   });
 }
 
-// Streamlit RENDER 이벤트
 Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, function(event) {
   const args = (event.detail && event.detail.args) || {};
   if (!_map) {
     onFirstRender(args);
   } else {
-    // 이미 지도 만들어졌으면 데이터만 갱신
     if (args.center && args.recenter) {
       _map.setCenter(new naver.maps.LatLng(args.center[0], args.center[1]));
       if (args.zoom) _map.setZoom(args.zoom);

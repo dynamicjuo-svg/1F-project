@@ -184,6 +184,178 @@ ROAD_MAPPER_SYSTEM = """당신은 한국 도로 매핑 전문가입니다.
 - 일반국도17: 수원-용인-안양"""
 
 
+LISTING_PARSER_SYSTEM = """당신은 한국 부동산 매물 정보 추출기입니다.
+사용자가 외부 플랫폼(네이버 부동산·디스코·밸류맵 등)에서 본 토지 매물의
+한 줄 설명을 JSON 객체로만 출력하세요.
+
+스키마 (모든 키 포함, 없으면 null):
+{
+  "emd": "읍·면·동 (예: '백암면')",
+  "ri": "리 (예: '백봉리'). 없으면 null",
+  "jibun": "지번 (예: '산98', '957-5'). '산'은 있는 그대로",
+  "is_san": "산 토지 여부. '산'으로 시작하면 true",
+  "jimok": "지목 (전/답/임야/대/도로/구거/공장용지/창고용지/잡종지 등)",
+  "area_m2": "면적 ㎡ (숫자). '11,287㎡'→11287, '210㎡'→210",
+  "area_pyeong": "면적 평 (숫자). '3414평'→3414. 둘 중 하나만 있어도 OK",
+  "jiga_per_m2": "공시지가 1㎡당 원. '36만원'→360000, '1㎡ 36만원'→360000",
+  "unit_per_pyeong_won": "평단가 만원→원 환산. '평당 121만원'→1210000원/평",
+  "deal_amount_won": "매물 호가 원. '5억'→500000000, '2억5천'→250000000"
+}
+
+규칙:
+- '산' 또는 '산 ' 뒤에 숫자 → is_san=true, jibun에는 '산'을 포함해서 (예: 'jibun': '산 98')
+- '11,287㎡' 같은 컴마는 무시
+- 평↔㎡ 변환은 안 함 (둘 중 입력된 것만 채움)
+- '36만원/㎡' 또는 '1㎡당 36만원' → jiga_per_m2=360000
+- 모르는 필드는 null
+- 마지막 1평 ≈ 3.3058㎡
+
+예시:
+입력: "경기도 용인시 처인구 백암면 백봉리 산98 임야 11,287㎡ 3,414평 공시지가 1㎡ 36만원 평당 121만원"
+출력: {"emd":"백암면","ri":"백봉리","jibun":"산 98","is_san":true,"jimok":"임야","area_m2":11287,"area_pyeong":3414,"jiga_per_m2":360000,"unit_per_pyeong_won":1210000,"deal_amount_won":null}
+"""
+
+
+def find_parcel_candidates(conn, listing: dict, limit: int = 8):
+    """매물 정보(parse_listing 결과)와 일치도 높은 parcel 후보 lookup + 점수.
+
+    가중치:
+      지번 정확 일치 40 / 부분 일치 20
+      면적 ±5% 30 / ±15% 15
+      공시지가 ±5% 20 / ±10% 10
+      지목 일치 10
+    """
+    global _EMD_P8
+    if _EMD_P8 is None:
+        _EMD_P8 = _load_emd_to_prefix8()
+
+    emd = listing.get("emd")
+    ri = listing.get("ri")
+    jibun_in = (listing.get("jibun") or "").strip()
+    is_san = bool(listing.get("is_san"))
+    jimok_in = listing.get("jimok")
+    area_in = listing.get("area_m2")
+    if not area_in and listing.get("area_pyeong"):
+        area_in = listing["area_pyeong"] * 3.3058
+    jiga_in = listing.get("jiga_per_m2")
+
+    # prefix8: emd 또는 ri로 추정
+    target_p8 = None
+    if emd:
+        target_p8 = _EMD_P8.get(emd)
+    if not target_p8 and ri:
+        target_p8 = _prefix8_from_ri_via_trades(conn, ri)
+
+    # 후보 풀 SQL
+    where = []
+    params = []
+    if target_p8:
+        where.append("prefix8 = ?")
+        params.append(target_p8)
+    if jimok_in:
+        where.append("jimok = ?")
+        params.append(jimok_in)
+    # 산구분 (PNU 11번째 자리: 1=일반, 2=산)
+    where.append("SUBSTR(pnu,11,1) = ?")
+    params.append("2" if is_san else "1")
+    # jibun 부분 매칭 (있으면 우선)
+    if jibun_in:
+        # '산 98' → '산 98%' 와 '산98%' 모두 시도
+        norm = jibun_in.replace(" ", "")
+        if norm.startswith("산"):
+            norm = "산" + norm[1:].lstrip()
+        # 두 패턴 OR
+        where.append("(jibun LIKE ? OR jibun LIKE ? OR jibun LIKE ? OR jibun LIKE ?)")
+        params += [jibun_in + "%", norm + "%",
+                   jibun_in.replace("산", "산 ") + "%",
+                   jibun_in.replace("산 ", "산") + "%"]
+
+    sql = (
+        "SELECT pnu, jibun, jimok, area_m2, jiga, prefix8, "
+        "elevation_m, slope_deg, has_road_access, shape_type, zone_type "
+        "FROM parcels "
+    )
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " LIMIT 200"   # 후보 풀 크기 제한
+
+    conn.row_factory = sqlite3.Row
+    rows = list(conn.execute(sql, params))
+
+    # 점수화
+    scored = []
+    for r in rows:
+        score = 0
+        breakdown = []
+
+        # 지번 일치
+        if jibun_in:
+            p_jibun = (r["jibun"] or "").rstrip("임전답대도구장창잡전")  # jimok 한 글자 제거
+            p_jibun = p_jibun.strip()
+            in_norm = jibun_in.replace(" ", "")
+            p_norm = p_jibun.replace(" ", "")
+            if p_norm == in_norm or p_norm == in_norm.replace("산", "산"):
+                score += 40
+                breakdown.append("지번 정확 +40")
+            elif p_norm.startswith(in_norm) or in_norm.startswith(p_norm):
+                score += 20
+                breakdown.append("지번 부분 +20")
+
+        # 면적 일치
+        if area_in and r["area_m2"]:
+            diff = abs(r["area_m2"] - area_in) / area_in
+            if diff <= 0.05:
+                score += 30
+                breakdown.append(f"면적 ±5% +30")
+            elif diff <= 0.15:
+                score += 15
+                breakdown.append(f"면적 ±15% +15")
+
+        # 공시지가 일치
+        if jiga_in and r["jiga"]:
+            diff = abs(r["jiga"] - jiga_in) / jiga_in
+            if diff <= 0.05:
+                score += 20
+                breakdown.append("공시지가 ±5% +20")
+            elif diff <= 0.10:
+                score += 10
+                breakdown.append("공시지가 ±10% +10")
+
+        # 지목 일치
+        if jimok_in and r["jimok"] == jimok_in:
+            score += 10
+            breakdown.append("지목 +10")
+
+        if score > 0:
+            scored.append((score, breakdown, dict(r)))
+
+    scored.sort(key=lambda x: -x[0])
+    return scored[:limit]
+
+
+def parse_listing(client, text: str) -> dict:
+    """외부 매물 한 줄 설명 → 표준화된 dict."""
+    msg = client.messages.create(
+        model=MODEL, max_tokens=400, system=LISTING_PARSER_SYSTEM,
+        messages=[
+            {"role": "user", "content": text},
+            {"role": "assistant", "content": "{"},
+        ],
+    )
+    raw = "{" + msg.content[0].text
+    depth = 0
+    end_idx = len(raw)
+    for i, c in enumerate(raw):
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                end_idx = i + 1
+                break
+    return json.loads(raw[:end_idx])
+
+
 def parse_query(client, query: str) -> dict:
     msg = client.messages.create(
         model=MODEL, max_tokens=600, system=PARSER_SYSTEM,
