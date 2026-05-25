@@ -225,17 +225,23 @@ function renderMap(args) {
         nHidden++;
       }
     });
-    // 디버그 패널 업데이트
+    // 디버그 패널 업데이트 — module-level 카운트 사용 (재마운트 시 reset 방지)
+    window._ofTotalCalls = (window._ofTotalCalls || 0) + 1;
     const dbg = document.getElementById('of-debug');
     if (dbg) {
       const status = show ? '✅ 폴리곤 표시' : '🚫 폴리곤 숨김';
+      const listenerOk = !!window._ofZoomListener;
+      const pollerOk = !!window._ofZoomPoller;
       dbg.innerHTML =
         '<div><b>줌</b>: ' + z + ' / 임계 ' + ZOOM_THRESHOLD + '</div>' +
         '<div><b>상태</b>: ' + status + '</div>' +
         '<div>폴리곤 ' + _drawnPolygons.length +
         ' (보임 ' + nShown + ' · 숨김 ' + nHidden + ')</div>' +
         '<div>마커 ' + _drawnMarkers.length + '</div>' +
-        '<div style="opacity:0.6;">호출 ' + _updateCallCount + '회</div>';
+        '<div style="opacity:0.7;">호출 ' + window._ofTotalCalls + '회</div>' +
+        '<div style="opacity:0.6;font-size:10px;">' +
+        'listener:' + (listenerOk ? '✓' : '✗') +
+        '  poller:' + (pollerOk ? '✓' : '✗') + '</div>';
     }
   }
   // 외부에서 호출할 수 있게 저장 (zoom_changed 핸들러가 사용)
@@ -287,13 +293,33 @@ function renderMap(args) {
     document.getElementById('map').appendChild(cadBtn);
     document.getElementById('map').appendChild(cadHint);
     document.getElementById('map').appendChild(dbgBox);
-    naver.maps.Event.addListener(map, 'zoom_changed', function() {
-      // 최신 updateVisibility 호출 (renderMap이 다시 불려서 함수가 갱신됐을 수 있음)
-      if (window._ofUpdateVisibility) window._ofUpdateVisibility();
-      refreshCad();
-    });
+    window._ofRefreshCad = refreshCad;
     refreshCad();
   }
+
+  // ❗ zoom_changed 리스너는 매 renderMap 호출마다 재등록 (이전 것 제거)
+  //    이전엔 if(!_cadastralLayer) 가드 안에만 있어서 한 번만 등록됐고,
+  //    그 첫 등록이 어떤 이유로든 실패하거나 streamlit 재마운트 시 살아남지
+  //    못해서 카운트가 안 늘어남.
+  if (window._ofZoomListener) {
+    try { naver.maps.Event.removeListener(window._ofZoomListener); } catch(e) {}
+  }
+  window._ofZoomListener = naver.maps.Event.addListener(map, 'zoom_changed', function() {
+    if (window._ofUpdateVisibility) window._ofUpdateVisibility();
+    if (window._ofRefreshCad) window._ofRefreshCad();
+  });
+
+  // 추가 안전망: 100ms 마다 줌 확인해서 변하면 updateVisibility 호출 (fallback)
+  if (window._ofZoomPoller) clearInterval(window._ofZoomPoller);
+  let _lastPolledZoom = map.getZoom();
+  window._ofZoomPoller = setInterval(function() {
+    const z = map.getZoom();
+    if (z !== _lastPolledZoom) {
+      _lastPolledZoom = z;
+      if (window._ofUpdateVisibility) window._ofUpdateVisibility();
+      if (window._ofRefreshCad) window._ofRefreshCad();
+    }
+  }, 250);
 
   // 선택된 필지 자동 fitBounds
   const selP = polygons.find(function(p) { return p.is_selected; });
