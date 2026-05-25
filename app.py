@@ -1256,6 +1256,17 @@ div[data-testid="stStatusWidget"] { display: none !important; }
 /* body/html 자체 viewport 고정 (스크롤 제거) */
 body, html { overflow: hidden !important; height: 100vh !important; }
 
+/* 초기 로드 시 streamlit 자연 흐름 화면이 잠깐 보이는 노이즈 차단 */
+/* body fade-in (한 번만 실행) — 0.4s 동안 처리 후 표시 */
+@keyframes of-page-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+body {
+  opacity: 0;
+  animation: of-page-fade-in 0.35s 0.55s ease-out forwards;
+}
+
 /* streamlit 에러 메시지 — fixed 강제 visible (우리 CSS가 가리는 것 방지) */
 [data-testid="stException"],
 [data-testid="stAlert"],
