@@ -3055,7 +3055,7 @@ if "result" in st.session_state:
             row["면적(평)"] = (int(r["area_m2"] * PYEONG_PER_M2)
                                 if r["area_m2"] else None)
             row["금액(만원)"] = r["deal_amount"]
-            row["평단가(만원/평)"] = (int(r["unit_per_pyeong"])
+            row["평단가"] = (int(r["unit_per_pyeong"])
                                         if r["unit_per_pyeong"] else None)
             row["시기"] = r["deal_ymd"][:10] if r["deal_ymd"] else ""
             row["PNU"] = r["resolved_pnu"] or ""
@@ -3100,7 +3100,7 @@ if "result" in st.session_state:
         for col in df_display.columns:
             is_num = col in (
                 "거리(m)", "면적(㎡)", "면적(평)", "금액(만원)",
-                "평단가(만원/평)",
+                "평단가",
             )
             table_columns.append({
                 "name": col,
@@ -3130,7 +3130,7 @@ if "result" in st.session_state:
             "deal_ymd": "시기",
             "deal_amount": "금액(만원)",
             "area_m2": "면적(㎡)",
-            "unit_per_pyeong": "평단가(만원/평)",
+            "unit_per_pyeong": "평단가",
         }
         initial_sort_col = col_map.get(sort_by)
         initial_sort_dir = "asc" if sort_order == "asc" else "desc"
@@ -3150,6 +3150,15 @@ if "result" in st.session_state:
             )
 
         # 표 아래에 선택된 필지의 dialog 내용 inline 표시
+        # 디버그 상태 박스 (항상 표시)
+        _sel_for_dbg = prev_selected_pnu or "(아직 선택 안 됨 — 표 행을 클릭하세요)"
+        st.markdown(
+            f"<div style='background:#fef9c3;border:1px solid #fbbf24;"
+            f"padding:6px 10px;border-radius:6px;font-size:11px;"
+            f"color:#92400e;margin-top:10px;font-family:monospace;'>"
+            f"선택 PNU: {_sel_for_dbg}</div>",
+            unsafe_allow_html=True,
+        )
         if prev_selected_pnu:
             st.divider()
             st.markdown(
