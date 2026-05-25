@@ -16,6 +16,12 @@
   .marker-dot {
     border-radius: 50%; border: 2px solid white;
     box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    transition: opacity 0.15s ease;
+  }
+  /* 줌 임계 이상에서 폴리곤과 중복 안 되게 dot만 거의 hide */
+  .marker-dot.poly-hide {
+    opacity: 0;
+    box-shadow: none;
   }
   .marker-label {
     margin-left: 6px;
@@ -253,15 +259,8 @@ function renderMap(args) {
       if (!mk.getMap()) mk.setMap(map);
     });
     document.querySelectorAll('.marker-dot').forEach(function(dot) {
-      if (show) {
-        dot.style.opacity = '0';
-        dot.style.width = '2px';
-        dot.style.height = '2px';
-      } else {
-        dot.style.opacity = '';
-        dot.style.width = '';
-        dot.style.height = '';
-      }
+      // class 토글로 처리 (inline width/height는 그대로 유지)
+      dot.classList.toggle('poly-hide', show);
     });
     // 디버그 패널 업데이트 — module-level 카운트 사용 (재마운트 시 reset 방지)
     window._ofTotalCalls = (window._ofTotalCalls || 0) + 1;
