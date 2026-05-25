@@ -1532,7 +1532,7 @@ if "result" in st.session_state:
                 help=f"{int(sel_parcel2['area_m2']):,}㎡" if sel_parcel2["area_m2"] else None,
             )
             # 3) 평단가 (만원/평) — 최근 거래 기준, 없으면 평균
-            if latest and latest.get("unit_per_pyeong"):
+            if latest and latest["unit_per_pyeong"]:
                 unit_disp = f"{int(latest['unit_per_pyeong']):,} 만원/평"
                 unit_help = f"최근 거래 기준 ({latest['deal_ymd'][:10]})"
             elif unit_prices:
