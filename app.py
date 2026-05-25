@@ -1047,48 +1047,48 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   margin-left: auto; font-family: 'Archivo Black', monospace;
   font-size: 10px; color: #6a6a6a; letter-spacing: 0.08em;
 }
-/* 검색 form을 지도 위 floating으로 (JS가 of-search-float class 부여) */
-.element-container.of-search-float {
+/* 검색 form을 지도 위 floating으로 — class를 form 자체에 부여 */
+.of-search-float {
   position: fixed !important;
   top: 70px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
-  width: 360px !important;          /* 사용자 요청: 절반으로 축소 */
+  width: 360px !important;
   max-width: calc(100vw - 28px) !important;
   z-index: 150 !important;
-  background: rgba(254, 249, 195, 0.95);
-  border: 3px solid #0a0a0a;
-  box-shadow: 4px 4px 0 #dc2626;
-  padding: 6px 8px;
+  background: rgba(254, 249, 195, 0.95) !important;
+  border: 3px solid #0a0a0a !important;
+  box-shadow: 4px 4px 0 #dc2626 !important;
+  padding: 6px 8px !important;
   backdrop-filter: blur(3px);
 }
-.element-container.of-search-float form[data-testid="stForm"] {
-  background: transparent !important; border: none !important;
-  box-shadow: none !important; padding: 0 !important;
+/* form 안 직접 자식 (Streamlit이 form 안에 또 div들 만듬) */
+.of-search-float > div {
   position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
 }
-/* 검색 input 우측 padding 늘려서 아이콘 자리 확보 */
-.element-container.of-search-float input {
+.of-search-float input {
   padding-right: 52px !important;
   font-size: 14px !important;
   height: 42px !important;
+  width: 100% !important;
 }
-/* form_submit_button 을 input 안 우측에 absolute */
-.element-container.of-search-float div[data-testid="stFormSubmitButton"] {
+/* form_submit_button = input 안 우측 */
+.of-search-float button[kind="primaryFormSubmit"],
+.of-search-float [data-testid="stFormSubmitButton"] button,
+.of-search-float [data-testid="stFormSubmitButton"] {
   position: absolute !important;
   right: 4px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
-  margin: 0 !important;
   z-index: 5;
-}
-.element-container.of-search-float div[data-testid="stFormSubmitButton"] button {
   height: 36px !important;
   width: 42px !important;
   min-width: 0 !important;
   padding: 0 !important;
   font-size: 16px !important;
-  box-shadow: 2px 2px 0 #0a0a0a !important;
 }
 /* 검색 input 내부에 아이콘 — input wrapper에 relative position 부여 */
 .of-search-icon-form > div { position: relative !important; }
@@ -1480,20 +1480,24 @@ components.html("""
   }
 
   function applySearchFloat() {
-    // 검색 form을 지도 위 floating으로 (상단 가운데)
-    // 다양한 selector 시도
     var form = doc.querySelector('form[data-testid="stForm"]')
       || doc.querySelector('div[data-testid="stForm"]')
-      || doc.querySelector('form');
+      || doc.querySelector('section[data-testid="stForm"]');
     if (!form) { window._ofDbgForm = 'NO'; return; }
     window._ofDbgForm = 'YES (' + form.tagName + ')';
-    var ec = form.closest('.element-container')
-      || form.closest('[data-testid="element-container"]')
-      || form.parentElement;
-    if (!ec) return;
-    if (!ec.classList.contains('of-search-float')) {
-      ec.classList.add('of-search-float');
-      window._ofDbgFloat = 'applied';
+    // form 자체에 class 부여 (element-container 우회)
+    if (!form.classList.contains('of-search-float')) {
+      form.classList.add('of-search-float');
+    }
+    // 부모 element-container들의 min-height/margin 해제 (자리 안 차지)
+    var p = form.parentElement;
+    var depth = 0;
+    while (p && p !== doc.body && depth < 5) {
+      p.style.minHeight = '0';
+      p.style.margin = '0';
+      p.style.padding = '0';
+      p = p.parentElement;
+      depth++;
     }
   }
 
