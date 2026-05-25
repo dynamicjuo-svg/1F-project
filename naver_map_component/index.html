@@ -106,10 +106,10 @@ function renderMap(args) {
   const map = _map;
   const SEL = args.sel_color || "#1e40af";
   const IS_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-  // 임계 이상에서 폴리곤이 잘 보이게 — fill·stroke 모두 진하게
-  const DEFAULT_FILL_OPACITY = IS_TOUCH ? 0.15 : 0.18;
-  const DEFAULT_STROKE_OPACITY = IS_TOUCH ? 0.9 : 0.95;
-  const DEFAULT_STROKE_WEIGHT = IS_TOUCH ? 2.0 : 2.2;
+  // 임계 이상에서 폴리곤이 잘 보이게 — fill·stroke 모두 강화
+  const DEFAULT_FILL_OPACITY = IS_TOUCH ? 0.22 : 0.28;
+  const DEFAULT_STROKE_OPACITY = 1.0;
+  const DEFAULT_STROKE_WEIGHT = IS_TOUCH ? 2.5 : 3.0;
   const ZOOM_THRESHOLD = args.zoom_label_threshold || 15;
 
   clearOverlays();
@@ -134,11 +134,12 @@ function renderMap(args) {
     const polygon = new naver.maps.Polygon({
       map: map, paths: paths,
       fillColor: isSel ? SEL : p.color,
-      fillOpacity: isSel ? 0.45 : DEFAULT_FILL_OPACITY,
+      fillOpacity: isSel ? 0.50 : DEFAULT_FILL_OPACITY,
       strokeColor: isSel ? SEL : p.color,
       strokeOpacity: isSel ? 1 : DEFAULT_STROKE_OPACITY,
-      strokeWeight: isSel ? 3 : DEFAULT_STROKE_WEIGHT,
+      strokeWeight: isSel ? 4 : DEFAULT_STROKE_WEIGHT,
       clickable: true,
+      zIndex: isSel ? 200 : 100,   // CadastralLayer(0) 위로 끌어올림
     });
     polygon._ofIsSelected = isSel;
     _drawnPolygons.push(polygon);
