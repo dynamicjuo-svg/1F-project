@@ -1680,6 +1680,50 @@ div[role="dialog"] iframe {
   .of-narrow-wrap { max-width: 100% !important; }
 }
 
+/* 지목 색 범례 — 지도 우측 하단 fixed */
+.of-legend {
+  position: fixed;
+  bottom: 14px;
+  right: 460px;  /* 사이드패널(420+14) 자리 회피 */
+  z-index: 90;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: 10px;
+  padding: 10px 14px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+  font-size: 11.5px;
+  color: #1f2937;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  min-width: 110px;
+  max-width: 240px;
+}
+.of-legend-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 10px;
+  color: #dc2626;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+.of-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  font-weight: 500;
+}
+.of-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid white;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.15);
+  flex-shrink: 0;
+}
+
 /* 우측 거래목록 사이드패널 — 기본 보임, 닫기/다시열기 토글 */
 .of-drawer-container {
   position: fixed !important;
@@ -3012,21 +3056,23 @@ if "result" in st.session_state:
                 f"(전체 {len(results)}건)"
             )
 
-        # 지목 색 범례
+        # 지목 색 범례 — 지도 우측 하단 fixed
         present_jimoks = sorted({r["jimok"] for _, r in results[:max_pins]
                                  if r["jimok"]})
         if present_jimoks:
-            legend = "  ".join(
-                f"<span style='color:{jimok_color(j)};font-weight:bold'>●</span> "
-                f"{j}"
+            legend_items = "".join(
+                f"<div class='of-legend-item'>"
+                f"<span class='of-legend-dot' style='background:{jimok_color(j)};'></span>"
+                f"{j}</div>"
                 for j in present_jimoks
             )
-            st.markdown(legend, unsafe_allow_html=True)
-        st.caption(
-            "🔴 선택된 필지  ·  호버하면 필지가 지목 색으로 강조  ·  "
-            "줌 15+ 마커 옆에 평·평단가·년월 라벨  ·  "
-            "✅ 지도↔표 양방향 동기화 작동"
-        )
+            st.markdown(
+                f"<div class='of-legend'>"
+                f"<div class='of-legend-title'>지목</div>"
+                f"{legend_items}"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
 
     # 양방향: 지도 클릭으로 selected_pnu가 변경됐다면 위쪽 of_naver_map 호출이
     # 이미 st.rerun을 트리거함. 여기서는 placeholder만 둠 (구 흐름 호환).
@@ -3135,6 +3181,16 @@ if "result" in st.session_state:
         initial_sort_col = col_map.get(sort_by)
         initial_sort_dir = "asc" if sort_order == "asc" else "desc"
 
+        # 진단 박스 — 표 위에 (표 아래에 두면 스크롤 필요해서 안 보임)
+        _sel_for_dbg = prev_selected_pnu or "(아직 선택 안 됨 — 표 행을 클릭하세요)"
+        st.markdown(
+            f"<div style='background:#fef9c3;border:1px solid #fbbf24;"
+            f"padding:6px 10px;border-radius:6px;font-size:11px;"
+            f"color:#92400e;margin-bottom:10px;font-family:monospace;'>"
+            f"선택 PNU: {_sel_for_dbg}</div>",
+            unsafe_allow_html=True,
+        )
+
         table_event = of_trades_table(
             rows=table_rows,
             columns=table_columns,
@@ -3148,17 +3204,6 @@ if "result" in st.session_state:
             st.caption(
                 f"※ 표에는 최대 500건만. 전체 {len(results):,}건은 엑셀로."
             )
-
-        # 표 아래에 선택된 필지의 dialog 내용 inline 표시
-        # 디버그 상태 박스 (항상 표시)
-        _sel_for_dbg = prev_selected_pnu or "(아직 선택 안 됨 — 표 행을 클릭하세요)"
-        st.markdown(
-            f"<div style='background:#fef9c3;border:1px solid #fbbf24;"
-            f"padding:6px 10px;border-radius:6px;font-size:11px;"
-            f"color:#92400e;margin-top:10px;font-family:monospace;'>"
-            f"선택 PNU: {_sel_for_dbg}</div>",
-            unsafe_allow_html=True,
-        )
         if prev_selected_pnu:
             st.divider()
             st.markdown(
