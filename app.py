@@ -836,7 +836,7 @@ BRAND_NAVY_LIGHT = "#fef3c7"  # 노란 베이지 BG
 BRAND_RED = "#dc2626"         # 강조 빨강
 BRAND_YELLOW = "#fbbf24"      # 보조 노랑
 
-APP_VERSION = "v2.0"
+APP_VERSION = "v2.1"
 APP_RELEASE_DATE = "2026-05-25"
 
 st.set_page_config(
