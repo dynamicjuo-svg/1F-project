@@ -2344,93 +2344,86 @@ if "result" in st.session_state:
             "그 외 지역은 무시되었습니다."
         )
 
-    # 결과 영역 시작 marker (JS로 wrapping하여 좌측 floating overlay로)
-    st.markdown('<div id="of-summary-start"></div>', unsafe_allow_html=True)
-
-    # GPT 스타일 응답 카드 — 검색 의도 자연어 풀이 + 항목 칩
-    sentence, chips = format_cond_as_sentence(cond, result)
-    chip_html = "".join(
-        f'<span style="display:inline-block;background:{BRAND_NAVY_LIGHT};'
-        f'color:{BRAND_NAVY_DEEP};padding:4px 10px;border-radius:999px;'
-        f'font-size:12px;font-weight:500;margin:3px 4px 3px 0;'
-        f'border:1px solid #d4dcef;">'
-        f'<span style="opacity:0.7;margin-right:4px;">{label}</span>'
-        f'<b>{value}</b></span>'
-        for label, value in chips
-    )
-    st.markdown(
-        f"""
-        <div class="of-gpt-card">
-          <div class="of-gpt-title">
-            <span class="of-gpt-icon">OF</span>
-            OneFamily가 정리한 내용
-          </div>
-          <div style="margin-bottom:10px;">{sentence}</div>
-          <div>{chip_html}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # 자연어 파싱 결과 expander 제거 — matched_road/period 정보만 짧게
-    if result["matched_road"]:
-        ri = result["road_info"] or {}
-        st.caption(
-            f"🛣️ 도로 매핑: `{cond.get('road_query')}` → "
-            f"**{result['matched_road']}** ({ri.get('confidence')})"
-            + (f"  ·  {ri.get('reason')}" if ri.get("reason") else "")
+    # 결과 카드 렌더링은 함수로 추출 — col_table 안에서 호출 (거래목록 위쪽)
+    def render_summary_cards():
+        # GPT 스타일 응답 카드
+        sentence, chips = format_cond_as_sentence(cond, result)
+        chip_html = "".join(
+            f'<span style="display:inline-block;background:{BRAND_NAVY_LIGHT};'
+            f'color:{BRAND_NAVY_DEEP};padding:4px 10px;border-radius:999px;'
+            f'font-size:12px;font-weight:500;margin:3px 4px 3px 0;'
+            f'border:1px solid #d4dcef;">'
+            f'<span style="opacity:0.7;margin-right:4px;">{label}</span>'
+            f'<b>{value}</b></span>'
+            for label, value in chips
         )
-    if result.get("start_ymd"):
-        st.caption(f"📅 기간: {result['start_ymd']} ~ {result['end_ymd']}")
-
-    # 참조 필지 정보 (reference_jibun)
-    if result.get("reference_info"):
-        ri = result["reference_info"]
-        ref = ri["ref"]
-        py = ref["area_m2"] / PYEONG_PER_M2 if ref.get("area_m2") else 0
-        with st.expander(f"📍 참조 필지: {ref['jibun']} ({ref['jimok']}, {py:,.0f}평)",
-                          expanded=True):
-            cols = st.columns(4)
-            cols[0].metric("면적", f"{int(ref['area_m2']):,}㎡",
-                           help=f"{py:,.0f}평")
-            cols[1].metric("공시지가",
-                           f"{int(ref['jiga']):,}원/㎡" if ref.get('jiga') else "—")
-            cols[2].metric("해발",
-                           f"{ref['elevation_m']:.0f}m" if ref.get('elevation_m') is not None else "—",
-                           help=f"경사 {ref['slope_deg']:.1f}°" if ref.get('slope_deg') is not None else "")
-            cols[3].metric("도로 접면",
-                           "접면" if ref.get('has_road_access') == 1 else
-                           ("맹지" if ref.get('has_road_access') == 0 else "—"))
-            if ri.get("notes"):
-                st.caption("**자동 채워진 조건**: " + " · ".join(ri["notes"]))
+        st.markdown(
+            f"""
+            <div class="of-gpt-card">
+              <div class="of-gpt-title">
+                <span class="of-gpt-icon">OF</span>
+                OneFamily가 정리한 내용
+              </div>
+              <div style="margin-bottom:10px;">{sentence}</div>
+              <div>{chip_html}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if result["matched_road"]:
+            ri = result["road_info"] or {}
+            st.caption(
+                f"🛣️ 도로 매핑: `{cond.get('road_query')}` → "
+                f"**{result['matched_road']}** ({ri.get('confidence')})"
+                + (f"  ·  {ri.get('reason')}" if ri.get("reason") else "")
+            )
+        if result.get("start_ymd"):
+            st.caption(f"📅 기간: {result['start_ymd']} ~ {result['end_ymd']}")
+        if result.get("reference_info"):
+            ri = result["reference_info"]
+            ref = ri["ref"]
+            py = ref["area_m2"] / PYEONG_PER_M2 if ref.get("area_m2") else 0
+            with st.expander(
+                f"📍 참조 필지: {ref['jibun']} ({ref['jimok']}, {py:,.0f}평)",
+                expanded=False,
+            ):
+                cols = st.columns(2)
+                cols[0].metric("면적", f"{int(ref['area_m2']):,}㎡",
+                               help=f"{py:,.0f}평")
+                cols[1].metric("공시지가",
+                               f"{int(ref['jiga']):,}원/㎡" if ref.get('jiga') else "—")
+                cols2 = st.columns(2)
+                cols2[0].metric("해발",
+                               f"{ref['elevation_m']:.0f}m" if ref.get('elevation_m') is not None else "—",
+                               help=f"경사 {ref['slope_deg']:.1f}°" if ref.get('slope_deg') is not None else "")
+                cols2[1].metric("도로 접면",
+                               "접면" if ref.get('has_road_access') == 1 else
+                               ("맹지" if ref.get('has_road_access') == 0 else "—"))
+                if ri.get("notes"):
+                    st.caption("**자동 채워진 조건**: " + " · ".join(ri["notes"]))
+        # 시세 요약
+        st.markdown("##### 💰 시세 요약")
+        solo = [(d, r) for d, r in results
+                if r["match_confidence"] == "high" and r.get("share_group") == "단독"]
+        units = [r["unit_per_pyeong"] for _, r in solo if r["unit_per_pyeong"]]
+        cols = st.columns(3)
+        cols[0].metric("전체 거래", f"{len(results):,}건")
+        cols[1].metric("정상 시세", f"{len(solo)}건",
+                        help="확정 매칭 + 단독매매 (공유지분 제외)")
+        if units:
+            avg = sum(units) / len(units)
+            cols[2].metric("평단가 평균", f"{avg:,.0f}")
+            prices = [r["deal_amount"] for _, r in solo]
+            st.caption(
+                f"평단가 범위 {min(units):,.0f} ~ {max(units):,.0f}만원/평 · "
+                f"거래금액 중앙값 **{statistics.median(prices):,.0f}만원**"
+            )
+        else:
+            cols[2].metric("평단가 평균", "—")
 
     if not results:
         st.warning("조건에 맞는 거래가 없어요. 다른 표현으로 시도해보세요.")
         st.stop()
-
-    # 시세 요약 (평단가 평균만)
-    st.subheader("💰 시세 요약")
-    solo = [(d, r) for d, r in results
-            if r["match_confidence"] == "high" and r.get("share_group") == "단독"]
-    units = [r["unit_per_pyeong"] for _, r in solo if r["unit_per_pyeong"]]
-    cols = st.columns(3)
-    cols[0].metric("전체 거래", f"{len(results):,}건")
-    cols[1].metric("정상 시세 표본", f"{len(solo)}건",
-                    help="확정 매칭 + 단독매매 (공유지분 거래 제외)")
-    if units:
-        avg = sum(units) / len(units)
-        cols[2].metric("평단가 평균", f"{avg:,.0f} 만원/평")
-        prices = [r["deal_amount"] for _, r in solo]
-        st.caption(
-            f"평단가 범위 {min(units):,.0f} ~ {max(units):,.0f} 만원/평  ·  "
-            f"거래금액 중앙값 **{statistics.median(prices):,.0f}만원**"
-        )
-    else:
-        cols[2].metric("평단가 평균", "—")
-
-    # 결과 영역 끝 marker
-    st.markdown('<div id="of-summary-end"></div>', unsafe_allow_html=True)
-    st.divider()
 
     # 이전 rerun에서 결정된 selected_pnu (지도·표 그리기에 사용)
     prev_selected_pnu = st.session_state.get("selected_pnu")
@@ -2983,11 +2976,14 @@ if "result" in st.session_state:
 
     # ===== 표 =====
     with col_table:
-        # 모바일 드로어가 이 column을 식별할 수 있도록 anchor
+        # 드로어가 이 column을 식별할 수 있도록 anchor
         st.markdown(
             '<div id="of-tbl-anchor" style="height:1px;"></div>',
             unsafe_allow_html=True,
         )
+        # 결과 카드(GPT + 시세 요약)를 거래목록 위쪽에 표시
+        render_summary_cards()
+        st.divider()
         st.subheader("📋 거래 목록")
         # 시군구 라벨 매핑
         SIGG_LABEL = {"41461": "처인", "41463": "기흥", "41465": "수지"}
