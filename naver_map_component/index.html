@@ -149,8 +149,17 @@ function renderMap(args) {
       pixelOffset: new naver.maps.Point(0, -8),
     });
     naver.maps.Event.addListener(polygon, 'click', function(e) {
-      Streamlit.setComponentValue({ type: 'pnu_click', pnu: p.pnu, ts: Date.now() });
+      window._ofClickCount = (window._ofClickCount || 0) + 1;
+      window._ofLastClick = 'POLY ' + p.pnu;
+      console.log('[OF] polygon click', p.pnu);
+      try {
+        Streamlit.setComponentValue({ type: 'pnu_click', pnu: p.pnu, ts: Date.now() });
+      } catch(err) {
+        console.error('[OF] setComponentValue 실패', err);
+        window._ofLastClick = 'ERR ' + err.message;
+      }
       info.open(map, e.coord);
+      if (window._ofUpdateVisibility) window._ofUpdateVisibility();
     });
     if (!isSel) {
       naver.maps.Event.addListener(polygon, 'mouseover', function(e) {
@@ -199,8 +208,17 @@ function renderMap(args) {
       pixelOffset: new naver.maps.Point(0, -8),
     });
     naver.maps.Event.addListener(marker, 'click', function() {
-      Streamlit.setComponentValue({ type: 'pnu_click', pnu: m.pnu, ts: Date.now() });
+      window._ofClickCount = (window._ofClickCount || 0) + 1;
+      window._ofLastClick = 'MARK ' + m.pnu;
+      console.log('[OF] marker click', m.pnu);
+      try {
+        Streamlit.setComponentValue({ type: 'pnu_click', pnu: m.pnu, ts: Date.now() });
+      } catch(err) {
+        console.error('[OF] setComponentValue 실패', err);
+        window._ofLastClick = 'ERR ' + err.message;
+      }
       info.open(map, marker);
+      if (window._ofUpdateVisibility) window._ofUpdateVisibility();
     });
   });
 
@@ -243,7 +261,11 @@ function renderMap(args) {
         '<div style="opacity:0.7;">호출 ' + window._ofTotalCalls + '회</div>' +
         '<div style="opacity:0.6;font-size:10px;">' +
         'listener:' + (listenerOk ? '✓' : '✗') +
-        '  poller:' + (pollerOk ? '✓' : '✗') + '</div>';
+        '  poller:' + (pollerOk ? '✓' : '✗') + '</div>' +
+        '<div style="margin-top:4px;border-top:1px dashed #92400e;padding-top:3px;' +
+        'font-size:10.5px;">클릭 ' + (window._ofClickCount || 0) + '회</div>' +
+        '<div style="font-size:9.5px;opacity:0.8;word-break:break-all;">' +
+        (window._ofLastClick || '아직 클릭 없음') + '</div>';
     }
   }
   // 외부에서 호출할 수 있게 저장 (zoom_changed 핸들러가 사용)
