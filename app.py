@@ -1080,6 +1080,7 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
     padding-right: 16px !important; padding-bottom: 0 !important;
     max-width: 100% !important;
   }
+  /* 사이드바: 기본 collapse 상태로 유지, expanded 시에만 360px */
   section[data-testid="stSidebar"] > div:first-child {
     background: rgba(254, 243, 199, 0.97) !important;
     border-right: 3px solid #0a0a0a !important;
@@ -1099,6 +1100,23 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   }
   h2, h3 { margin-top: 0.4rem !important; margin-bottom: 0.4rem !important; }
   div[data-testid="stMetric"] { padding: 4px 8px !important; }
+  /* 드로어 핸들 PC에서도 표시 */
+  #of-drawer-handle { display: flex !important; }
+  /* col_table = 우측 드로어 (PC에도 적용) */
+  .of-drawer-container {
+    position: fixed !important;
+    top: 0 !important; right: 0 !important;
+    width: 440px !important; height: 100vh !important;
+    background: white !important;
+    z-index: 9000 !important;
+    border-left: 3px solid #0a0a0a !important;
+    box-shadow: -8px 0 16px rgba(0,0,0,0.18) !important;
+    transform: translateX(100%);
+    transition: transform 0.28s ease;
+    overflow-y: auto;
+    padding: 14px 12px;
+  }
+  .of-drawer-container.open { transform: translateX(0); }
 }
 
 /* 모바일 (<=768px) */
@@ -1840,8 +1858,9 @@ if "result" in st.session_state:
         st.session_state._dialog_shown_for = prev_selected_pnu
         show_parcel_dialog(prev_selected_pnu)
 
-    # 시안 4: 지도가 main의 거의 전체 차지. 표는 매우 좁은 col (사이드바 역할)
-    col_map, col_table = st.columns([3.5, 1])
+    # 시안 4: 지도가 main 전체. 표는 우측 드로어(of-drawer-container)로 빠짐.
+    # 비율은 [1, 0.01] 정도로 col_table 거의 없앰 — JS가 fixed로 빼냄.
+    col_map, col_table = st.columns([100, 1])
 
     # ===== 지도 (네이버) =====
     with col_map:
