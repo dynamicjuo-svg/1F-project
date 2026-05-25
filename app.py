@@ -1692,7 +1692,7 @@ div[role="dialog"] iframe {
   font-size: 12.5px;
   line-height: 1.5;
   color: #0f172a;
-  max-height: 360px;
+  max-height: calc(50vh - 50px);   /* 사이드패널 절반 */
   overflow-y: auto;
   /* 스크롤바 명확하게 */
   scrollbar-width: thin;
@@ -3098,16 +3098,6 @@ if "result" in st.session_state:
         }
         initial_sort_col = col_map.get(sort_by)
         initial_sort_dir = "asc" if sort_order == "asc" else "desc"
-
-        # 진단 박스 — 표 위에 (표 아래에 두면 스크롤 필요해서 안 보임)
-        _sel_for_dbg = prev_selected_pnu or "(아직 선택 안 됨 — 표 행을 클릭하세요)"
-        st.markdown(
-            f"<div style='background:#fef9c3;border:1px solid #fbbf24;"
-            f"padding:6px 10px;border-radius:6px;font-size:11px;"
-            f"color:#92400e;margin-bottom:10px;font-family:monospace;'>"
-            f"선택 PNU: {_sel_for_dbg}</div>",
-            unsafe_allow_html=True,
-        )
 
         table_event = of_trades_table(
             rows=table_rows,
