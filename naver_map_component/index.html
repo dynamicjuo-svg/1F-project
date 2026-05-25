@@ -273,86 +273,23 @@ function renderMap(args) {
   window._ofUpdateVisibility = updateVisibility;
   updateVisibility();
 
-  // 지적편집도 — V-World WMTS 타일을 ImageMapType으로 overlayMapTypes에 추가
-  // (네이버 CadastralLayer는 NCP 유료 옵션이라 V-World 무료 타일로 대체)
+  // 지적편집도 기능 제거됨 (사용자 요청)
+  // 디버그 패널만 별도로 (?debug=1 URL일 때만)
   if (!_cadastralLayer) {
-    try {
-      _cadastralLayer = new naver.maps.ImageMapType({
-        name: '지적편집도',
-        tileSize: new naver.maps.Size(256, 256),
-        minZoom: 6, maxZoom: 19, opacity: 0.65,
-        getTileUrl: function(tile, z) {
-          return 'https://api.vworld.kr/req/wmts/1.0.0/'
-            + '5B45757F-FF60-3E33-9BA2-2DAFB48BBD58/Hybrid/'
-            + z + '/' + tile.y + '/' + tile.x + '.png';
-        },
-      });
-      // ImageMapType은 setMap 없음 — overlayMapTypes API 사용
-      map.overlayMapTypes.insertAt(0, _cadastralLayer);
-    } catch (e) {
-      console.error('[OF] cadastral layer 생성 실패', e);
-      _cadastralLayer = { _broken: true };
-    }
-    const cadBtn = document.createElement('button');
-    const cadHint = document.createElement('div');
+    _cadastralLayer = { _disabled: true };
     const dbgBox = document.createElement('div');
-    cadBtn.style.cssText =
-      'position:absolute;top:10px;left:10px;z-index:1000;' +
-      'padding:8px 12px;background:#0a0a0a;color:#fbbf24;' +
-      'border:2px solid #0a0a0a;cursor:pointer;font-size:12px;font-weight:700;' +
-      'font-family:"Archivo Black",sans-serif;letter-spacing:0.04em;' +
-      'box-shadow:2px 2px 0 #dc2626;touch-action:manipulation;';
-    cadHint.style.cssText = 'display:none;';
-    cadHint.innerText = '';
-    // 디버그 패널 — ?debug=1 URL일 때만 표시 (기본 hide)
     dbgBox.id = 'of-debug';
     const debugForced = (window.location.search || '').indexOf('debug=1') >= 0
       || (window.parent && (window.parent.location.search || '').indexOf('debug=1') >= 0);
     dbgBox.style.cssText =
-      'position:absolute;top:10px;right:60px;z-index:1000;' +
+      'position:absolute;top:10px;right:10px;z-index:1000;' +
       'padding:8px 12px;background:#fef3c7;border:3px solid #0a0a0a;' +
       'box-shadow:3px 3px 0 #0a0a0a;font-family:monospace;' +
       'font-size:11.5px;line-height:1.5;color:#0a0a0a;font-weight:600;' +
       'min-width:160px;' +
       (debugForced ? '' : 'display:none;');
     dbgBox.innerText = 'debug …';
-    function isCadOn() {
-      // overlayMapTypes 안에 _cadastralLayer가 있는지
-      var arr = map.overlayMapTypes.getArray
-        ? map.overlayMapTypes.getArray() : [];
-      for (var i = 0; i < arr.length; i++) {
-        if (arr[i] === _cadastralLayer) return true;
-      }
-      return false;
-    }
-    function refreshCad() {
-      const on = isCadOn();
-      cadBtn.innerText = on ? '🗺️ 지적편집도 ON' : '🗺️ 지적편집도 OFF';
-      cadBtn.style.background = on ? '#dc2626' : '#0a0a0a';
-      cadBtn.style.color = on ? '#ffffff' : '#fbbf24';
-      cadBtn.style.boxShadow = on ? '3px 3px 0 #0a0a0a' : '3px 3px 0 #dc2626';
-    }
-    cadBtn.onclick = function() {
-      if (_cadastralLayer && _cadastralLayer._broken) return;
-      if (isCadOn()) {
-        // 제거: 배열에서 찾아 removeAt
-        var arr = map.overlayMapTypes.getArray();
-        for (var i = 0; i < arr.length; i++) {
-          if (arr[i] === _cadastralLayer) {
-            map.overlayMapTypes.removeAt(i);
-            break;
-          }
-        }
-      } else {
-        map.overlayMapTypes.insertAt(0, _cadastralLayer);
-      }
-      refreshCad();
-    };
-    document.getElementById('map').appendChild(cadBtn);
-    document.getElementById('map').appendChild(cadHint);
     document.getElementById('map').appendChild(dbgBox);
-    window._ofRefreshCad = refreshCad;
-    refreshCad();
   }
 
   // ❗ zoom_changed 리스너는 매 renderMap 호출마다 재등록 (이전 것 제거)
@@ -364,10 +301,9 @@ function renderMap(args) {
   }
   window._ofZoomListener = naver.maps.Event.addListener(map, 'zoom_changed', function() {
     if (window._ofUpdateVisibility) window._ofUpdateVisibility();
-    if (window._ofRefreshCad) window._ofRefreshCad();
   });
 
-  // 추가 안전망: 100ms 마다 줌 확인해서 변하면 updateVisibility 호출 (fallback)
+  // 추가 안전망: 250ms 마다 줌 확인해서 변하면 updateVisibility 호출 (fallback)
   if (window._ofZoomPoller) clearInterval(window._ofZoomPoller);
   let _lastPolledZoom = map.getZoom();
   window._ofZoomPoller = setInterval(function() {
@@ -375,7 +311,6 @@ function renderMap(args) {
     if (z !== _lastPolledZoom) {
       _lastPolledZoom = z;
       if (window._ofUpdateVisibility) window._ofUpdateVisibility();
-      if (window._ofRefreshCad) window._ofRefreshCad();
     }
   }, 250);
 
