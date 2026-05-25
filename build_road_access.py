@@ -22,7 +22,19 @@ DB_PATH = os.path.join(HERE, "trades.db")
 
 ROAD_ACCESS_THRESHOLD_M = 10.0   # 필지 경계 ↔ 도로 중심선 거리
 GRID_DEG = 0.005                 # ~500m 격자
-TARGET_PREFIX8 = ("41461340", "41461350")   # 원삼면, 백암면
+def _load_all_prefix8():
+    """region_prefix_cache.json에서 모든 emd의 prefix8 추출."""
+    import json as _j
+    p = os.path.join(HERE, "region_prefix_cache.json")
+    if not os.path.exists(p):
+        return ("41461340", "41461350")
+    with open(p, encoding="utf-8") as f:
+        d = _j.load(f)
+    p8s = tuple(sorted({info["prefix8"] for info in d.get("emd_map", {}).values()}))
+    return p8s if p8s else ("41461340", "41461350")
+
+
+TARGET_PREFIX8 = _load_all_prefix8()
 
 LAT_DEG_TO_M = 111049.0
 
@@ -154,7 +166,7 @@ def main():
     print(" build_road_access — 필지 도로 접면 자동 판정")
     print("=" * 78)
     print(f"   임계값: {ROAD_ACCESS_THRESHOLD_M}m  (필지 경계 ↔ 도로 중심선)")
-    print(f"   대상: prefix8 {TARGET_PREFIX8} (원삼면·백암면)")
+    print(f"   대상 emd: {len(TARGET_PREFIX8)}개 (모든 등록 emd)")
 
     print("\n[1] roads 격자 인덱스 구축...")
     t0 = time.time()
@@ -198,19 +210,21 @@ def main():
     )
     conn.commit()
 
-    print("\n[5] 결과 분포")
+    print("\n[5] 결과 분포 — 시군구별")
     print("-" * 78)
+    sigg_name = {"41461": "처인구", "41463": "기흥구", "41465": "수지구"}
     for r in conn.execute(
-        f"SELECT prefix8, SUM(CASE WHEN has_road_access=1 THEN 1 ELSE 0 END) access, "
+        f"SELECT SUBSTR(prefix8,1,5) sgg, "
+        f"SUM(CASE WHEN has_road_access=1 THEN 1 ELSE 0 END) access, "
         f"COUNT(*) total FROM parcels "
-        f"WHERE prefix8 IN ({ph}) GROUP BY prefix8",
+        f"WHERE prefix8 IN ({ph}) GROUP BY sgg ORDER BY 1",
         TARGET_PREFIX8
     ):
         pct = r[1] / r[2] * 100 if r[2] else 0
-        name = '원삼면' if r[0] == '41461340' else ('백암면' if r[0] == '41461350' else r[0])
-        print(f"   {name} ({r[0]}): 접면 {r[1]:,}/{r[2]:,} ({pct:.1f}%)")
+        name = sigg_name.get(r[0], r[0])
+        print(f"   {name}: 접면 {r[1]:,}/{r[2]:,} ({pct:.1f}%)")
 
-    print("\n[6] 지목별 접면율 (원삼+백암 합산)")
+    print("\n[6] 지목별 접면율 (전 대상 합산)")
     print("-" * 78)
     for r in conn.execute(
         f"SELECT jimok, SUM(CASE WHEN has_road_access=1 THEN 1 ELSE 0 END) access, "

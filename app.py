@@ -597,6 +597,12 @@ def search_pipeline(query: str, include_road_jimok: bool):
         parcels_conds.append("has_road_access = 1")
     if cond.get("exclude_road_access"):
         parcels_conds.append("(has_road_access IS NULL OR has_road_access = 0)")
+    # 신규: frontage / corner 필터
+    if cond.get("min_road_frontage_m") is not None:
+        parcels_conds.append("road_frontage_m >= ?")
+        parcels_params.append(cond["min_road_frontage_m"])
+    if cond.get("require_corner_lot"):
+        parcels_conds.append("is_corner_lot = 1")
     if cond.get("exclude_flood"):
         parcels_conds.append("(flood_risk IS NULL OR flood_risk = 0)")
     if cond.get("shape_include"):
@@ -640,7 +646,7 @@ def search_pipeline(query: str, include_road_jimok: bool):
         sort_order = "DESC"
 
     sql = (
-        "SELECT id, umd_name, jimok, area_m2, deal_amount, deal_ymd, "
+        "SELECT id, sigg_cd, umd_name, jimok, area_m2, deal_amount, deal_ymd, "
         "resolved_pnu, resolved_jibun, resolved_lon, resolved_lat, "
         "unit_per_pyeong, match_confidence, jibun_masked, "
         "price_anomaly, share_label "
@@ -1018,6 +1024,47 @@ st.markdown(f"""
   }}
   /* 디바이더 */
   hr {{ border-top: 3px solid {BRAND_NAVY} !important; }}
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  /*  반응형 — 모바일 (≤768px) 에서 헤더·검색창·매물검증 조정       */
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  @media (max-width: 768px) {{
+    .of-logo {{ font-size: 26px !important; }}
+    .of-logo-box {{ font-size: 28px !important; padding: 6px 12px !important; }}
+    .of-brand {{ flex-wrap: wrap; gap: 10px !important; }}
+    .of-badge {{ font-size: 11px !important; padding: 4px 8px !important; }}
+    .of-brand-sub {{ font-size: 13px !important; }}
+    .stTextInput > div > div > input {{
+      font-size: 14px; padding: 12px 14px;
+      box-shadow: 3px 3px 0 {BRAND_NAVY};
+    }}
+    div.stButton > button {{
+      font-size: 14px !important; padding: 10px 12px !important;
+    }}
+    /* 검색 한 줄 → 세로 stack */
+    div[data-testid="column"] {{ flex: 0 0 100% !important; max-width: 100% !important; }}
+    /* dialog 본문 패딩 줄이기 */
+    div[role="dialog"] {{ padding: 12px !important; }}
+    /* metric 카드 패딩 축소 */
+    div[data-testid="stMetric"] {{ padding: 6px 8px !important; }}
+    div[data-testid="stMetricValue"] {{ font-size: 16px !important; }}
+    div[data-testid="stMetricLabel"] {{ font-size: 11px !important; }}
+    /* expander 헤더 폰트 */
+    div[data-testid="stExpander"] summary {{ font-size: 13px !important; }}
+    /* 사이드바는 모바일에서 자동 hide되지만, 열렸을 때 폭 90% */
+    section[data-testid="stSidebar"][aria-expanded="true"] {{ width: 92vw !important; }}
+  }}
+
+  /* PC (≥769px): 검색창과 버튼 가로 배치 + 버튼 폭 자동 */
+  @media (min-width: 769px) {{
+    div.stButton > button {{
+      white-space: nowrap;
+    }}
+    /* 검색 row 안 버튼은 입력창 높이에 맞춤 */
+    div[data-testid="stHorizontalBlock"] div.stButton > button {{
+      height: 52px;
+    }}
+  }}
   /* 글꼴 — 큰 타이틀에 Archivo Black */
   h1, h2, h3 {{
     font-family: 'Archivo Black', 'Pretendard', sans-serif !important;
@@ -1060,19 +1107,39 @@ with st.sidebar:
         n_anomaly = c.execute(
             "SELECT COUNT(*) FROM trades WHERE price_anomaly IS NOT NULL"
         ).fetchone()[0]
-        return n_trades, n_high, n_parcels, mn[:10], mx[:10], n_anomaly
+        # 시군구별 분포 (parcels.prefix8 기준)
+        sigg_dist = []
+        for r in c.execute(
+            "SELECT SUBSTR(prefix8,1,5) sgg, COUNT(*) FROM parcels "
+            "WHERE prefix8 IS NOT NULL GROUP BY sgg ORDER BY 1"):
+            sigg_dist.append((r[0], r[1]))
+        # trades 시군구별
+        sigg_trades = {}
+        for r in c.execute(
+            "SELECT sigg_cd, COUNT(*) FROM trades WHERE sigg_cd IS NOT NULL "
+            "GROUP BY sigg_cd"):
+            sigg_trades[str(r[0])] = r[1]
+        return (n_trades, n_high, n_parcels, mn[:10], mx[:10], n_anom_var := n_anomaly,
+                sigg_dist, sigg_trades)
 
-    n_trades, n_high, n_parcels, mn, mx, n_anom = _db_stats()
+    n_trades, n_high, n_parcels, mn, mx, n_anom, sigg_dist, sigg_trades = _db_stats()
+    SIGG_NAME = {"41461": "처인구", "41463": "기흥구", "41465": "수지구"}
+    sigg_lines = "<br>".join(
+        f"&nbsp;&nbsp;<b>{SIGG_NAME.get(sgg, sgg)}</b>: 거래 "
+        f"{sigg_trades.get(sgg, 0):,} · 필지 {n_p:,}"
+        for sgg, n_p in sigg_dist
+    )
     st.markdown(
         f"""
         <div class="of-scope-box">
           <div class="of-scope-title">검색 대상 DB</div>
-          <div style="margin-bottom:6px;font-size:14px;">📍 <b>용인 처인구 전체 17개 읍·면·동</b></div>
+          <div style="margin-bottom:6px;font-size:14px;">📍 <b>용인시 3개구 · 42개 읍·면·동</b></div>
           <div style="font-size:12px;color:{BRAND_NAVY};line-height:1.65;">
             기간: {mn} ~ {mx}<br>
-            토지 거래 <span class="of-scope-num">{n_trades:,}</span>건
-            (매칭 <b>{n_high:,}</b>건 · 이상치 <b>{n_anom:,}</b>)<br>
-            필지 <span class="of-scope-num">{n_parcels:,}</span>개<br>
+            {sigg_lines}<br>
+            <b style="color:{BRAND_RED};">전체</b>: 토지 거래 <span class="of-scope-num">{n_trades:,}</span>건
+            (매칭 <b>{n_high:,}</b> · 이상치 <b>{n_anom:,}</b>)<br>
+            전체 필지 <span class="of-scope-num">{n_parcels:,}</span>개<br>
             <span style="font-size:10.5px;opacity:0.7;">국토부 · V-World · SRTM 30m</span>
           </div>
         </div>
@@ -1087,6 +1154,7 @@ with st.sidebar:
             ✓ 지목 · 면적 · 기간 · 금액 · 평단가<br>
             ✓ 도로 반경 · 다중 도로 OR<br>
             ✓ 해발 · 경사 · 맹지 · 공유지분<br>
+            ✓ 형상(정방형/길쭉형/L자) · <b>접도/코너</b><br>
             ✓ 'X와 비슷한 조건' 참조 검색
           </div>
         </div>
@@ -1120,24 +1188,31 @@ st.markdown(
       <div>
         <div class="of-logo">One<span class="of-logo-accent">Family</span> 실거래가</div>
       </div>
-      <span class="of-badge">용인 처인구 · 전체 17개 읍·면·동</span>
+      <span class="of-badge">용인시 3개구 · 42개 읍·면·동</span>
     </div>
     <div class="of-brand-sub">자연어 한 줄로 토지 실거래를 분석합니다</div>
     <div class="of-version">{APP_VERSION} · 발행 {APP_RELEASE_DATE}</div>
     <div style="font-size:12.5px;color:#0a0a0a;margin-bottom:14px;line-height:1.7;font-weight:500;">
       예시 · "원삼면 임야 평당 100 미만 최근 1년"
-      &nbsp;·&nbsp; "지방도318 반경 5km 1억 이하"
+      &nbsp;·&nbsp; "신갈동 대지 코너 매물"
+      &nbsp;·&nbsp; "동천동 접도 30m 이상"
       &nbsp;·&nbsp; "두창리 957-5와 비슷한 조건"
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-query = st.text_input(
-    "질의", placeholder="자연어로 원하는 조건을 한 줄 입력하세요 (예: 두창리 957-5와 비슷한 조건의 실거래가)",
-    label_visibility="collapsed",
-)
-go = st.button("🔍 검색 시작", type="primary", use_container_width=True)
+# 검색창 + 버튼을 한 줄로 (PC: 입력창 좁게 + 옆에 버튼, 모바일: CSS로 세로 stack)
+search_row = st.columns([5, 1], gap="small")
+with search_row[0]:
+    query = st.text_input(
+        "질의", placeholder="자연어로 한 줄 입력 (예: 두창리 957-5와 비슷한 조건)",
+        label_visibility="collapsed",
+        key="of_query_input",
+    )
+with search_row[1]:
+    go = st.button("🔍 검색", type="primary", use_container_width=True,
+                   key="of_search_btn")
 
 # ============================================================================
 #  📋 매물 교차 검증 — 외부 플랫폼에서 본 매물을 우리 DB와 일치도 점수로 매칭
@@ -1322,10 +1397,7 @@ if "result" in st.session_state:
         unsafe_allow_html=True,
     )
 
-    with st.expander("🔧 자연어 파싱 결과 (원본 JSON)"):
-        cleaned = {k: v for k, v in cond.items()
-                   if v is not None and v != [] and v != ""}
-        st.json(cleaned)
+    # 자연어 파싱 결과 expander — 제거 (사용자 요청)
         if result["matched_road"]:
             ri = result["road_info"] or {}
             st.write(
@@ -1362,20 +1434,18 @@ if "result" in st.session_state:
         st.warning("조건에 맞는 거래가 없어요. 다른 표현으로 시도해보세요.")
         st.stop()
 
-    # 시세 요약
+    # 시세 요약 (평단가 평균만)
     st.subheader("💰 시세 요약")
     solo = [(d, r) for d, r in results
             if r["match_confidence"] == "high" and r.get("share_group") == "단독"]
     units = [r["unit_per_pyeong"] for _, r in solo if r["unit_per_pyeong"]]
-    cols = st.columns(4)
+    cols = st.columns(3)
     cols[0].metric("전체 거래", f"{len(results):,}건")
     cols[1].metric("정상 시세 표본", f"{len(solo)}건",
                     help="확정 매칭 + 단독매매 (공유지분 거래 제외)")
     if units:
-        med = statistics.median(units)
         avg = sum(units) / len(units)
-        cols[2].metric("평단가 중앙값", f"{med:,.0f} 만원/평")
-        cols[3].metric("평단가 평균", f"{avg:,.0f} 만원/평")
+        cols[2].metric("평단가 평균", f"{avg:,.0f} 만원/평")
         prices = [r["deal_amount"] for _, r in solo]
         st.caption(
             f"평단가 범위 {min(units):,.0f} ~ {max(units):,.0f} 만원/평  ·  "
@@ -1383,8 +1453,7 @@ if "result" in st.session_state:
             f"정렬: `{result['sort_by']} {result['sort_order']}`"
         )
     else:
-        cols[2].metric("평단가 중앙값", "—")
-        cols[3].metric("평단가 평균", "—")
+        cols[2].metric("평단가 평균", "—")
 
     st.divider()
 
@@ -1399,7 +1468,11 @@ if "result" in st.session_state:
             """
             SELECT pnu, jibun, jimok, area_m2, jiga, addr,
                    elevation_m, slope_deg, has_road_access,
-                   shape_type, zone_type, prefix8
+                   shape_type, shape_aspect,
+                   zone_type, zone_detail,
+                   road_frontage_m, road_frontage_ratio, road_n_sides,
+                   is_corner_lot, road_frontage_angle_deg,
+                   prefix8
             FROM parcels WHERE pnu = ?
             """,
             (pnu,),
@@ -1447,26 +1520,40 @@ if "result" in st.session_state:
                 unsafe_allow_html=True,
             )
             deal_cols = st.columns(3)
-            deal_cols[0].metric(
-                "최근 거래가",
-                f"{latest['deal_amount']:,} 만원" if latest else "—",
-                help=(f"{latest['deal_ymd'][:10]} 거래" if latest else None),
-            )
-            if unit_prices:
-                median_unit = statistics.median(unit_prices)
-                deal_cols[1].metric(
-                    "평단가 (중앙)",
-                    f"{median_unit:,.0f} 만/평",
-                    help=(f"{len(unit_prices)}건 기준  "
-                          f"({min(unit_prices):,.0f}~{max(unit_prices):,.0f})"),
+            # 1) 최근 거래가 — 억 단위
+            if latest:
+                amt_man = latest["deal_amount"] or 0
+                if amt_man >= 10000:
+                    eok = amt_man / 10000
+                    amt_display = f"{eok:,.2f} 억"
+                else:
+                    amt_display = f"{amt_man:,} 만원"
+                deal_cols[0].metric(
+                    "최근 거래가", amt_display,
+                    help=(f"{latest['deal_ymd'][:10]} 거래 · "
+                          f"전체 {len(sel_trades2)}건"),
                 )
             else:
-                deal_cols[1].metric("평단가 (중앙)", "—")
-            deal_cols[2].metric(
-                "거래 건수",
-                f"{len(sel_trades2)} 건",
-                help=(f"최근: {latest['deal_ymd'][:10]}" if latest else None),
+                deal_cols[0].metric("최근 거래가", "—")
+            # 2) 평수 (면적)
+            py = (sel_parcel2["area_m2"] / PYEONG_PER_M2
+                  if sel_parcel2["area_m2"] else 0)
+            deal_cols[1].metric(
+                "평수", f"{py:,.0f} 평",
+                help=f"{int(sel_parcel2['area_m2']):,}㎡" if sel_parcel2["area_m2"] else None,
             )
+            # 3) 평단가 (만원/평) — 최근 거래 기준, 없으면 평균
+            if latest and latest.get("unit_per_pyeong"):
+                unit_disp = f"{int(latest['unit_per_pyeong']):,} 만원/평"
+                unit_help = f"최근 거래 기준 ({latest['deal_ymd'][:10]})"
+            elif unit_prices:
+                avg_u = sum(unit_prices) / len(unit_prices)
+                unit_disp = f"{avg_u:,.0f} 만원/평"
+                unit_help = f"평균 ({len(unit_prices)}건)"
+            else:
+                unit_disp = "—"
+                unit_help = None
+            deal_cols[2].metric("평단가", unit_disp, help=unit_help)
 
             # ━━━ 입지 (보조) ━━━
             st.markdown(
@@ -1475,7 +1562,7 @@ if "result" in st.session_state:
                 f"margin-bottom:6px;'>입지 · LOCATION</div>",
                 unsafe_allow_html=True,
             )
-            loc_cols = st.columns(3)
+            loc_cols = st.columns(4)
             loc_cols[0].metric(
                 "해발",
                 f"{sel_parcel2['elevation_m']:.0f}m"
@@ -1486,19 +1573,49 @@ if "result" in st.session_state:
                 f"{sel_parcel2['slope_deg']:.1f}°"
                 if sel_parcel2["slope_deg"] is not None else "—",
             )
+            # 도로 접면: 접도 길이까지 표시
+            front_m = sel_parcel2["road_frontage_m"]
+            n_sides = sel_parcel2["road_n_sides"]
+            is_corner = sel_parcel2["is_corner_lot"]
+            if front_m is not None and front_m > 0:
+                access_label = "접면"
+                if is_corner:
+                    access_label = f"코너({n_sides}면)"
+                elif n_sides == 1:
+                    access_label = "1면 접도"
+                access_help = f"접도 길이 {front_m:.1f}m · {n_sides}면"
+            elif sel_parcel2["has_road_access"] == 1:
+                access_label = "접면"
+                access_help = None
+            elif sel_parcel2["has_road_access"] == 0 or front_m == 0:
+                access_label = "맹지"
+                access_help = None
+            else:
+                access_label = "—"
+                access_help = None
             loc_cols[2].metric(
-                "도로 접면",
-                "접면" if sel_parcel2["has_road_access"] == 1
-                else ("맹지" if sel_parcel2["has_road_access"] == 0 else "—"),
+                "도로 접면", access_label,
+                help=access_help,
             )
+            # 접도 길이 (있으면 표시)
+            if front_m is not None and front_m > 0:
+                loc_cols[3].metric(
+                    "접도 길이", f"{front_m:.0f}m",
+                    help="필지 외곽환 변 중 도로 ≤10m, 도로방향 평행 변의 길이 합",
+                )
+            else:
+                loc_cols[3].metric("접도 길이", "—")
 
             # ━━━ 필지 속성 (작게, 보조) ━━━
             jiga_text = (f"{int(sel_parcel2['jiga']):,}원/㎡"
                          if sel_parcel2['jiga'] else "—")
+            # 용도지역: zone_detail이 있으면 detail, 없으면 zone_type
+            zone_text = (sel_parcel2["zone_detail"] or
+                         sel_parcel2["zone_type"] or "—")
             attr_bits = [
                 f"공시지가 <b>{jiga_text}</b>",
                 f"형상 <b>{sel_parcel2['shape_type'] or '—'}</b>",
-                f"용도지역 <b>{sel_parcel2['zone_type'] or '—'}</b>",
+                f"용도지역 <b>{zone_text}</b>",
             ]
             st.markdown(
                 f"<div style='margin-top:14px;padding:10px 14px;"
@@ -1512,10 +1629,7 @@ if "result" in st.session_state:
 
             # 형상 의심 경고 — 매우 길쭉한 작은 임야는 V-World가 임야로 분류해도
             # 실제 도로/구거일 가능성이 있음 (J 같은 권리분석자에게 중요한 신호)
-            try:
-                asp = sel_parcel2["shape_aspect"]
-            except (KeyError, IndexError):
-                asp = None
+            asp = sel_parcel2["shape_aspect"]
             if (asp is not None and asp > 0
                     and asp < 0.2
                     and sel_parcel2["area_m2"]
@@ -1539,6 +1653,43 @@ if "result" in st.session_state:
             f"📋 국토부 토지매매 실거래 원본 데이터</div>",
             unsafe_allow_html=True,
         )
+        def _explain_match(t):
+            """매칭 신뢰도 산출 근거를 사람이 읽을 수 있는 문장 리스트로."""
+            bits = []
+            masked = t["jibun_masked"] or ""
+            resolved = t["resolved_jibun"] or ""
+            if "*" in masked and resolved:
+                bits.append(f"지번 별표 패턴 `{masked}` 복원 → **{resolved}**")
+            elif masked and masked == resolved:
+                bits.append(f"지번 **{resolved}** 정확 일치")
+            elif resolved:
+                bits.append(f"지번 복원: **{resolved}**")
+            if t["is_san"]:
+                bits.append("산(山) 구분 일치")
+            if t["area_m2"] and t["resolved_area_m2"]:
+                ref_a = float(t["resolved_area_m2"])
+                deal_a = float(t["area_m2"])
+                if ref_a > 0:
+                    diff = abs(deal_a - ref_a) / ref_a * 100
+                    if diff < 1:
+                        bits.append(f"면적 거의 동일 (±{diff:.1f}%)")
+                    elif diff < 5:
+                        bits.append(f"면적 ±{diff:.1f}% (정상 범위)")
+                    else:
+                        bits.append(f"면적 ±{diff:.1f}% (약간 차이)")
+            bits.append(f"지목 **{t['jimok']}** 일치")
+            cands = t["candidates_count"] or 0
+            if cands == 1:
+                bits.append("후보 **1개 (유일 매칭)**")
+            elif cands <= 3:
+                bits.append(f"후보 {cands}개 중 1위 (점수 큰 차이)")
+            elif cands > 0:
+                bits.append(f"후보 {cands}개 중 1위 (지번·면적·공시지가 종합)")
+            return bits
+
+        CONF_COLOR = {"high": "#16a34a", "mid": "#ca8a04", "low": "#dc2626"}
+        CONF_LABEL = {"high": "확정 매칭", "mid": "중간 신뢰", "low": "낮은 신뢰"}
+
         for i, t in enumerate(sel_trades2):
             anomaly_tag = ""
             if t["price_anomaly"] == "high_outlier":
@@ -1553,6 +1704,28 @@ if "result" in st.session_state:
                 f"[{t['match_confidence']}]{anomaly_tag}",
                 expanded=(i == 0),
             ):
+                # 매칭 신뢰도 근거 박스 (왜 이 거래가 이 필지로 매칭됐는지)
+                conf = t["match_confidence"] or "—"
+                color = CONF_COLOR.get(conf, "#64748b")
+                conf_label = CONF_LABEL.get(conf, conf)
+                why_bits = _explain_match(t)
+                why_html = "".join(
+                    f"<div style='font-size:13px;line-height:1.65;'>"
+                    f"<span style='color:{color};font-weight:700;'>✓</span> {b}</div>"
+                    for b in why_bits
+                )
+                st.markdown(
+                    f"<div style='margin-bottom:14px;padding:12px 14px;"
+                    f"background:#fef9c3;border-left:5px solid {color};"
+                    f"border:2px solid {BRAND_NAVY};border-left-width:5px;'>"
+                    f"<div style='font-family:\"Archivo Black\",sans-serif;"
+                    f"font-size:11.5px;color:{color};letter-spacing:0.06em;"
+                    f"margin-bottom:6px;'>매칭 신뢰도 · {conf_label.upper()} "
+                    f"<span style='color:{BRAND_NAVY};'>(왜 이 필지인가?)</span></div>"
+                    f"{why_html}"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
                 raw_cols = st.columns(2)
                 with raw_cols[0]:
                     st.markdown(
@@ -1820,11 +1993,14 @@ if "result" in st.session_state:
     # ===== 표 =====
     with col_table:
         st.subheader("📋 거래 목록")
+        # 시군구 라벨 매핑
+        SIGG_LABEL = {"41461": "처인", "41463": "기흥", "41465": "수지"}
         df_rows = []
         for d, r in results:
             row = {}
             if result["road_lines"]:
                 row["거리(m)"] = int(d) if d is not None else None
+            row["구"] = SIGG_LABEL.get(str(r["sigg_cd"]), "—")
             row["동·리"] = r["umd_name"]
             row["지번"] = r["resolved_jibun"] or "?"
             row["지목"] = r["jimok"]

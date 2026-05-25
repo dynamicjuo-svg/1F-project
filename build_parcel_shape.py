@@ -21,7 +21,19 @@ from collections import Counter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "trades.db")
-TARGET_PREFIX8 = ("41461340", "41461350")
+def _load_all_prefix8():
+    """region_prefix_cache.json에서 모든 emd의 prefix8 추출."""
+    import json as _j
+    p = os.path.join(HERE, "region_prefix_cache.json")
+    if not os.path.exists(p):
+        return ("41461340", "41461350")
+    with open(p, encoding="utf-8") as f:
+        d = _j.load(f)
+    p8s = tuple(sorted({info["prefix8"] for info in d.get("emd_map", {}).values()}))
+    return p8s if p8s else ("41461340", "41461350")
+
+
+TARGET_PREFIX8 = _load_all_prefix8()
 
 LAT_DEG_TO_M = 111049.0
 

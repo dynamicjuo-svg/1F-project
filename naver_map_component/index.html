@@ -137,6 +137,7 @@ function renderMap(args) {
       strokeWeight: isSel ? 3 : DEFAULT_STROKE_WEIGHT,
       clickable: true,
     });
+    polygon._ofIsSelected = isSel;
     _drawnPolygons.push(polygon);
     const info = new naver.maps.InfoWindow({
       content: '<div class="info-card">' + (p.html || '') + '</div>',
@@ -199,15 +200,28 @@ function renderMap(args) {
     });
   });
 
-  // 라벨 — 줌 임계 기반 토글
-  function updateLabels() {
+  // 라벨 + 폴리곤 — 줌 임계 기반 토글
+  //   zoom < THRESHOLD: 마커만 표시 (산만함 줄임)
+  //   zoom ≥ THRESHOLD: 마커 + 필지(폴리곤) + 라벨 함께
+  function updateVisibility() {
     const show = map.getZoom() >= ZOOM_THRESHOLD;
     document.querySelectorAll('.marker-label').forEach(function(el) {
       if (show) el.classList.add('show');
       else el.classList.remove('show');
     });
+    // 폴리곤은 줌 임계 이상에서만 표시 (선택된 필지는 항상 표시)
+    _drawnPolygons.forEach(function(pg) {
+      const isSel = !!pg._ofIsSelected;
+      if (show || isSel) {
+        if (!pg.getMap()) pg.setMap(map);
+      } else {
+        if (pg.getMap()) pg.setMap(null);
+      }
+    });
   }
-  updateLabels();
+  updateVisibility();
+  // 외부에서 호출할 수 있게 저장 (zoom_changed 핸들러가 사용)
+  window._ofUpdateVisibility = updateVisibility;
 
   // CadastralLayer + 토글 버튼 + 줌 이벤트 (한 번만)
   if (!_cadastralLayer) {
@@ -244,7 +258,7 @@ function renderMap(args) {
     document.getElementById('map').appendChild(cadBtn);
     document.getElementById('map').appendChild(cadHint);
     naver.maps.Event.addListener(map, 'zoom_changed', function() {
-      updateLabels();
+      updateVisibility();
       refreshCad();
     });
     refreshCad();
@@ -261,7 +275,7 @@ function renderMap(args) {
     setTimeout(function() {
       const z = map.getZoom();
       if (z > 20) map.setZoom(20);
-      updateLabels();
+      updateVisibility();
     }, 150);
   }
 }

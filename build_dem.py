@@ -45,7 +45,19 @@ TILE_SIZE = 3601    # 픽셀 한 변 (30m 해상도 → 3601)
 CELL_DEG = 1.0 / (TILE_SIZE - 1)  # 셀 한 변(도)
 LAT_DEG_TO_M = 111049.0
 
-TARGET_PREFIX8 = ("41461340", "41461350")  # 원삼면·백암면
+def _load_all_prefix8():
+    """region_prefix_cache.json에서 모든 emd의 prefix8 추출."""
+    import json as _j
+    p = os.path.join(HERE, "region_prefix_cache.json")
+    if not os.path.exists(p):
+        return ("41461340", "41461350")
+    with open(p, encoding="utf-8") as f:
+        d = _j.load(f)
+    p8s = tuple(sorted({info["prefix8"] for info in d.get("emd_map", {}).values()}))
+    return p8s if p8s else ("41461340", "41461350")
+
+
+TARGET_PREFIX8 = _load_all_prefix8()
 
 
 def load_hgt(path):
@@ -142,21 +154,22 @@ def main():
     )
     conn.commit()
 
-    print("\n[5] 결과 통계")
+    print("\n[5] 결과 통계 — 시군구별")
     print("-" * 78)
+    sigg_name = {"41461": "처인구", "41463": "기흥구", "41465": "수지구"}
     for r in conn.execute(
-        f"SELECT prefix8, "
+        f"SELECT SUBSTR(prefix8,1,5) sgg, COUNT(*), "
         f"  ROUND(AVG(elevation_m), 1), ROUND(MIN(elevation_m), 0), ROUND(MAX(elevation_m), 0), "
         f"  ROUND(AVG(slope_deg), 1), ROUND(MAX(slope_deg), 1) "
         f"FROM parcels WHERE prefix8 IN ({ph}) AND elevation_m IS NOT NULL "
-        f"GROUP BY prefix8",
+        f"GROUP BY sgg ORDER BY 1",
         TARGET_PREFIX8
     ):
-        name = '원삼면' if r[0] == '41461340' else ('백암면' if r[0] == '41461350' else r[0])
-        print(f"   {name}: 해발 평균 {r[1]}m  ({r[2]}~{r[3]}m)  "
-              f"경사 평균 {r[4]}°  최대 {r[5]}°")
+        name = sigg_name.get(r[0], r[0])
+        print(f"   {name} ({r[1]:>6,}건): 해발 평균 {r[2]}m  ({r[3]}~{r[4]}m)  "
+              f"경사 평균 {r[5]}°  최대 {r[6]}°")
 
-    print("\n[6] 지목별 해발/경사 (원삼+백암 합산)")
+    print("\n[6] 지목별 해발/경사 (전 대상 합산)")
     print("-" * 78)
     for r in conn.execute(
         f"SELECT jimok, COUNT(*) cnt, "

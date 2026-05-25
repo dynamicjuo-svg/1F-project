@@ -72,6 +72,8 @@ PARSER_SYSTEM = """당신은 한국 토지 실거래가 검색 시스템의 자�
   "require_road_access": "true=도로 접면 필수. '맹지 아닌'·'도로 접한'·'도로변'→true",
   "exclude_road_access": "true=맹지만. '맹지만'→true (드문 표현)",
   "exclude_flood": "true=침수예상지역 제외. '침수 빼고'·'안전한'→true",
+  "min_road_frontage_m": "접도 길이 최소(m). '접도 30m 이상'·'전면 넓은'·'도로 폭 충분한'→30 등",
+  "require_corner_lot": "true=코너 매물(2면 이상 접도). '코너'·'각지'·'양접'·'코너땅'→true",
 
   "shape_include": "토지 형상 포함 배열. 가능: '정방형','장방형','길쭉형','L자형','불규칙'. '정방형만'→['정방형'], '직사각형에 가까운'→['정방형','장방형']",
   "shape_exclude": "토지 형상 제외 배열. '길쭉한 모양 빼고'→['길쭉형'], 'L자형 빼고'→['L자형']",
@@ -125,6 +127,8 @@ PARSER_SYSTEM = """당신은 한국 토지 실거래가 검색 시스템의 자�
 - "하천에서 떨어진"·"하천 멀리" → min_stream_dist_m=500
 - "맹지 아닌"·"도로 접한"·"도로변"·"진입로 있는" → require_road_access=true
 - "맹지만" → exclude_road_access=true
+- "코너"·"코너땅"·"각지"·"양접"·"2면 접도"·"3면 접도" → require_corner_lot=true
+- "접도 30m 이상"·"전면 30m"·"도로 폭 30m" → min_road_frontage_m=30
 - "침수 빼고"·"침수예상 제외"·"안전한 곳" → exclude_flood=true
 - 복합: "관리지역 해발 100m 이상 맹지 아닌" →
   zone_include=["관리지역"], min_elevation_m=100, require_road_access=true
@@ -858,6 +862,11 @@ def search(query: str):
         parcels_conds.append("has_road_access = 1")
     if cond.get("exclude_road_access"):
         parcels_conds.append("(has_road_access IS NULL OR has_road_access = 0)")
+    if cond.get("min_road_frontage_m") is not None:
+        parcels_conds.append("road_frontage_m >= ?")
+        parcels_params.append(cond["min_road_frontage_m"])
+    if cond.get("require_corner_lot"):
+        parcels_conds.append("is_corner_lot = 1")
     if cond.get("exclude_flood"):
         parcels_conds.append("(flood_risk IS NULL OR flood_risk = 0)")
     if cond.get("shape_include"):
