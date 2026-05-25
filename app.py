@@ -1524,11 +1524,64 @@ div[role="dialog"] iframe {
 /* PC (>=769px) — 시안 4 풀스크린 컨셉 */
 @media (min-width: 769px) {
   section.main > div.block-container {
-    padding-top: 92px !important;   /* 검색 form (top:22+52+14 margin) 아래로 */
+    padding-top: 92px !important;   /* 검색 form 아래로 */
     padding-left: 16px !important;
     padding-right: 460px !important; /* 우측 사이드패널(420) 자리 */
     padding-bottom: 0 !important;
     max-width: 100vw !important;
+  }
+  /* 결과 카드 영역 — 폭 제한 + 모던 카드 */
+  .of-summary-wrap {
+    max-width: 460px !important;
+    margin: 0;
+    position: relative;
+    z-index: 60;
+  }
+  /* 결과 카드 안 GPT 카드 — 모던으로 축소 */
+  .of-summary-wrap .of-gpt-card {
+    padding: 14px 18px !important;
+    margin: 0 0 10px 0 !important;
+    font-size: 13.5px !important;
+    background: white !important;
+    color: #0f172a !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
+    border-left: 4px solid #dc2626 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08) !important;
+  }
+  .of-summary-wrap .of-gpt-card .of-gpt-title {
+    color: #dc2626 !important;
+    font-size: 11.5px !important;
+    margin-bottom: 8px !important;
+  }
+  .of-summary-wrap .of-gpt-card .of-gpt-icon {
+    background: #dc2626 !important;
+    color: white !important;
+    width: 22px !important; height: 22px !important;
+    border-radius: 5px;
+    font-size: 10px !important;
+  }
+  .of-summary-wrap .of-gpt-card b { color: #dc2626 !important; }
+  /* 결과 안 metric 카드 모던 */
+  .of-summary-wrap div[data-testid="stMetric"] {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
+    border-radius: 10px !important;
+    padding: 8px 10px !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+  }
+  .of-summary-wrap div[data-testid="stMetricValue"] {
+    font-size: 18px !important; color: #0f172a !important; font-weight: 700 !important;
+  }
+  .of-summary-wrap div[data-testid="stMetricLabel"] {
+    font-size: 11px !important; color: #64748b !important;
+  }
+  .of-summary-wrap h5 {
+    font-size: 13px !important;
+    color: #475569 !important;
+    margin: 10px 0 6px 0 !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
   section.main {
     margin-left: 0 !important;
@@ -2436,8 +2489,10 @@ if "result" in st.session_state:
         else:
             cols[2].metric("평단가 평균", "—")
 
-    # main 흐름에 결과 카드 표시 (원위치)
+    # main 흐름에 결과 카드 표시 — 폭 제한 wrapper
+    st.markdown('<div class="of-summary-wrap">', unsafe_allow_html=True)
     render_summary_cards()
+    st.markdown('</div>', unsafe_allow_html=True)
 
     if not results:
         st.warning("조건에 맞는 거래가 없어요. 다른 표현으로 시도해보세요.")
