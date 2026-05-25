@@ -1156,21 +1156,35 @@ div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
 /* PC (>=769px) — 시안 4 풀스크린 컨셉 */
 @media (min-width: 769px) {
   section.main > div.block-container {
-    padding-top: 10px !important; padding-left: 16px !important;
-    padding-right: 16px !important; padding-bottom: 0 !important;
-    max-width: 100% !important;
+    padding: 0 !important;
+    max-width: 100vw !important;
   }
   /* main이 viewport 100% 차지 */
   section.main {
     margin-left: 0 !important;
     width: 100% !important;
   }
-  /* 지도 iframe 풀 viewport */
-  div[data-testid="column"] iframe[height="540"] {
-    height: calc(100vh - 180px) !important; min-height: 540px;
+  /* 헤더(of-brand-slim)를 지도 위 fixed 띠로 */
+  .of-brand-slim {
+    position: fixed !important;
+    top: 0 !important; left: 0 !important; right: 0 !important;
+    z-index: 120 !important;
+    background: rgba(254, 243, 199, 0.95) !important;
+    backdrop-filter: blur(3px);
+    padding: 6px 18px !important;
+    margin: 0 !important;
+    border-bottom: 2px solid #0a0a0a !important;
   }
-  div[data-testid="column"] iframe[height="490"] {
-    height: calc(100vh - 220px) !important; min-height: 490px;
+  /* 지도 iframe — 진짜 풀스크린 100vh */
+  iframe[height="540"] {
+    height: 100vh !important; min-height: 100vh !important;
+  }
+  iframe[height="490"] {
+    height: calc(100vh - 60px) !important; min-height: 490px;
+  }
+  /* 지도 element-container도 margin 0 (헤더 fixed 위에 깔리지 않게 top: 0) */
+  iframe[height="540"] {
+    margin-top: 0 !important;
   }
   .of-gpt-card {
     padding: 12px 16px !important; margin: 8px 0 12px 0 !important;
