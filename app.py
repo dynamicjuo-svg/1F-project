@@ -1368,8 +1368,8 @@ if "result" in st.session_state:
 
     if result["out_of_range"]:
         st.warning(
-            "⚠️ 검색 가능 지역은 **용인 처인구**(17개 읍·면·동)입니다. "
-            "그 외 지역은 무시됨. 기흥구·수지구는 곧 추가 예정."
+            "⚠️ 검색 가능 지역은 **용인시 3개구**(처인·기흥·수지, 42개 읍·면·동)입니다. "
+            "그 외 지역은 무시되었습니다."
         )
 
     # GPT 스타일 응답 카드 — 검색 의도 자연어 풀이 + 항목 칩
@@ -1397,17 +1397,16 @@ if "result" in st.session_state:
         unsafe_allow_html=True,
     )
 
-    # 자연어 파싱 결과 expander — 제거 (사용자 요청)
-        if result["matched_road"]:
-            ri = result["road_info"] or {}
-            st.write(
-                f"**도로 매핑**: `{cond.get('road_query')}` → "
-                f"**{result['matched_road']}**  ({ri.get('confidence')})"
-            )
-            if ri.get("reason"):
-                st.caption(ri["reason"])
-        if result["start_ymd"]:
-            st.write(f"**기간**: {result['start_ymd']} ~ {result['end_ymd']}")
+    # 자연어 파싱 결과 expander 제거 — matched_road/period 정보만 짧게
+    if result["matched_road"]:
+        ri = result["road_info"] or {}
+        st.caption(
+            f"🛣️ 도로 매핑: `{cond.get('road_query')}` → "
+            f"**{result['matched_road']}** ({ri.get('confidence')})"
+            + (f"  ·  {ri.get('reason')}" if ri.get("reason") else "")
+        )
+    if result.get("start_ymd"):
+        st.caption(f"📅 기간: {result['start_ymd']} ~ {result['end_ymd']}")
 
     # 참조 필지 정보 (reference_jibun)
     if result.get("reference_info"):
