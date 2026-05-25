@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <style>
   body, html { margin: 0; padding: 0; font-family: system-ui, sans-serif; background: #fafafa; }
-  #map { width: 100%; height: 540px; }
+  html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+  #map { width: 100vw; height: 100vh; }
   .info-card {
     padding: 10px 12px; font-size: 12px; line-height: 1.5;
     max-width: 320px; background: white;
@@ -400,7 +401,13 @@ Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, function(event) {
 });
 
 Streamlit.setComponentReady();
-Streamlit.setFrameHeight(540);
+// iframe height을 viewport 높이로 — 풀스크린 컨셉
+function _ofUpdateFrameHeight() {
+  Streamlit.setFrameHeight(window.innerHeight);
+}
+_ofUpdateFrameHeight();
+window.addEventListener('resize', _ofUpdateFrameHeight);
+setInterval(_ofUpdateFrameHeight, 1000);  // streamlit 재호출 보정
 </script>
 </body>
 </html>
