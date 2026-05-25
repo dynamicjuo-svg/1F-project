@@ -1060,14 +1060,31 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   border: 3px solid #0a0a0a !important;
   box-shadow: 4px 4px 0 #dc2626 !important;
   padding: 6px 8px !important;
+  height: 56px !important;
+  overflow: visible !important;
   backdrop-filter: blur(3px);
 }
-/* form 안 직접 자식 (Streamlit이 form 안에 또 div들 만듬) */
+/* form 안 모든 vertical block을 row flex로 + height 압축 */
+.of-search-float [data-testid="stVerticalBlock"],
+.of-search-float [data-testid="stVerticalBlockBorderWrapper"],
 .of-search-float > div {
   position: relative !important;
   display: flex !important;
+  flex-direction: row !important;
   align-items: center !important;
   gap: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+/* element-container도 flex item으로 (정렬 망가지지 않게) */
+.of-search-float [data-testid="element-container"],
+.of-search-float .element-container {
+  flex: 1 1 auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: auto !important;
 }
 .of-search-float input {
   padding-right: 52px !important;
@@ -1075,20 +1092,24 @@ div[data-testid="stHorizontalBlock"] div.stButton > button {
   height: 42px !important;
   width: 100% !important;
 }
-/* form_submit_button = input 안 우측 */
-.of-search-float button[kind="primaryFormSubmit"],
-.of-search-float [data-testid="stFormSubmitButton"] button,
+/* submit button = input 위 우측에 absolute */
 .of-search-float [data-testid="stFormSubmitButton"] {
   position: absolute !important;
-  right: 4px !important;
+  right: 6px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
   z-index: 5;
+  margin: 0 !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+}
+.of-search-float [data-testid="stFormSubmitButton"] button {
   height: 36px !important;
   width: 42px !important;
   min-width: 0 !important;
   padding: 0 !important;
   font-size: 16px !important;
+  box-shadow: 2px 2px 0 #0a0a0a !important;
 }
 /* 검색 input 내부에 아이콘 — input wrapper에 relative position 부여 */
 .of-search-icon-form > div { position: relative !important; }
