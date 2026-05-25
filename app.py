@@ -1480,27 +1480,74 @@ body, html { overflow: hidden !important; height: 100vh !important; }
   .of-narrow-wrap { max-width: 100% !important; }
 }
 
-/* 우측 드로어 핸들 — PC + 모바일 모두 표시 */
-#of-drawer-handle {
-  display: flex;
-  position: fixed;
-  top: 50%; right: 0;
-  transform: translateY(-50%);
-  background: #0a0a0a;
-  color: #fbbf24;
-  z-index: 9100;
-  padding: 14px 8px;
-  font-family: 'Archivo Black', sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
-  box-shadow: -3px 3px 0 rgba(0,0,0,0.3);
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  user-select: none;
+/* 우측 거래목록 사이드패널 — 기본 보임, 닫기/다시열기 토글 */
+.of-drawer-container {
+  position: fixed !important;
+  top: 88px !important;             /* 검색창 아래 */
+  right: 14px !important;
+  width: 420px !important;
+  max-width: calc(100vw - 28px) !important;
+  max-height: calc(100vh - 110px) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12),
+              0 2px 6px rgba(15, 23, 42, 0.05) !important;
+  z-index: 100 !important;
+  overflow: hidden !important;
+  padding: 14px 8px 8px 14px !important;
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  transform: none !important;
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
 }
+.of-drawer-container.collapsed {
+  opacity: 0;
+  transform: translateX(20px) !important;
+  pointer-events: none;
+}
+/* 닫기 X 버튼 */
+.of-drawer-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.08);
+  color: #475569;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 5;
+  transition: background 0.12s ease, color 0.12s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.of-drawer-close:hover { background: #dc2626; color: white; }
+/* 다시 열기 핸들 (닫혔을 때) */
+#of-drawer-handle {
+  display: none;
+  position: fixed;
+  top: 88px;
+  right: 14px;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.10);
+  backdrop-filter: blur(10px);
+  letter-spacing: 0.02em;
+  font-family: 'Pretendard', sans-serif;
+}
+#of-drawer-handle.show { display: block; }
+#of-drawer-handle:hover { color: #dc2626; }
 </style>
 
 <script>
@@ -1597,32 +1644,7 @@ body, html { overflow: hidden !important; height: 100vh !important; }
 })();
 </script>
 
-<div id="of-drawer-handle" onclick="
-  var col = window._ofDrawerCol;
-  if (!col) {
-    var t = document.getElementById('of-tbl-anchor');
-    if (t) {
-      col = t.parentElement;
-      while (col && !(col.getAttribute &&
-        (col.getAttribute('data-testid') === 'column' ||
-         col.getAttribute('data-testid') === 'stColumn'))) {
-        col = col.parentElement;
-        if (!col || col === document.body) { col = null; break; }
-      }
-    }
-  }
-  if (!col) return;
-  if (!col.classList.contains('of-drawer-container')) {
-    col.classList.add('of-drawer-container');
-  }
-  if (col.classList.contains('open')) {
-    col.classList.remove('open');
-    this.innerText = '📋 거래목록';
-  } else {
-    col.classList.add('open');
-    this.innerText = '✕ 닫기';
-  }
-">📋 거래목록</div>
+<div id="of-drawer-handle">📋 거래목록 열기</div>
 """, unsafe_allow_html=True)
 
 # JS는 streamlit이 sanitize하니까 components.html() iframe으로 우회 — parent.document 접근
@@ -1664,9 +1686,32 @@ components.html("""
       col = col.parentElement;
       if (!col || col === doc.body) return;
     }
-    if (col && !col.classList.contains('of-drawer-container')) {
+    if (!col) return;
+    if (!col.classList.contains('of-drawer-container')) {
       col.classList.add('of-drawer-container');
       window.parent._ofDrawerCol = col;
+    }
+    // 닫기 버튼 inject (1회만)
+    if (!col.querySelector('.of-drawer-close')) {
+      var closeBtn = doc.createElement('button');
+      closeBtn.className = 'of-drawer-close';
+      closeBtn.innerHTML = '✕';
+      closeBtn.title = '거래목록 닫기';
+      closeBtn.onclick = function() {
+        col.classList.add('collapsed');
+        var h = doc.getElementById('of-drawer-handle');
+        if (h) h.classList.add('show');
+      };
+      col.appendChild(closeBtn);
+    }
+    // 다시 열기 핸들 onclick 등록 (1회)
+    var handle = doc.getElementById('of-drawer-handle');
+    if (handle && !handle._ofWired) {
+      handle._ofWired = true;
+      handle.onclick = function() {
+        col.classList.remove('collapsed');
+        handle.classList.remove('show');
+      };
     }
   }
 
@@ -2122,8 +2167,7 @@ if "result" in st.session_state:
         prices = [r["deal_amount"] for _, r in solo]
         st.caption(
             f"평단가 범위 {min(units):,.0f} ~ {max(units):,.0f} 만원/평  ·  "
-            f"거래금액 중앙값 **{statistics.median(prices):,.0f}만원**  ·  "
-            f"정렬: `{result['sort_by']} {result['sort_order']}`"
+            f"거래금액 중앙값 **{statistics.median(prices):,.0f}만원**"
         )
     else:
         cols[2].metric("평단가 평균", "—")

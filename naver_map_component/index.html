@@ -202,6 +202,7 @@ function renderMap(args) {
       map: map,
       icon: { content: content, anchor: new naver.maps.Point(size/2, size/2) },
     });
+    marker._ofIsSelected = sel;
     _drawnMarkers.push(marker);
     const info = new naver.maps.InfoWindow({
       content: '<div class="info-card">' + (m.html || '') + '</div>',
@@ -244,6 +245,15 @@ function renderMap(args) {
       } else {
         if (pg.getMap()) pg.setMap(null);
         nHidden++;
+      }
+    });
+    // 줌 임계 이상에서 마커는 숨김 (폴리곤과 중복 방지)
+    _drawnMarkers.forEach(function(mk) {
+      const isSel = !!mk._ofIsSelected;
+      if (show && !isSel) {
+        if (mk.getMap()) mk.setMap(null);
+      } else {
+        if (!mk.getMap()) mk.setMap(map);
       }
     });
     // 디버그 패널 업데이트 — module-level 카운트 사용 (재마운트 시 reset 방지)
