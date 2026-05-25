@@ -92,12 +92,14 @@ function loadSDK(clientId, cb) {
 }
 
 function clearOverlays() {
+  // ❗ .length = 0 으로 in-place 비움 — 새 배열을 할당하면 zoom 리스너
+  //    클로저가 이전 배열을 잡고 있어 새 폴리곤이 안 토글되는 버그가 됨.
   _drawnPolygons.forEach(p => p.setMap(null));
-  _drawnPolygons = [];
+  _drawnPolygons.length = 0;
   _drawnMarkers.forEach(m => m.setMap(null));
-  _drawnMarkers = [];
+  _drawnMarkers.length = 0;
   _drawnRoadLines.forEach(l => l.setMap(null));
-  _drawnRoadLines = [];
+  _drawnRoadLines.length = 0;
 }
 
 function renderMap(args) {
@@ -203,32 +205,50 @@ function renderMap(args) {
   // 라벨 + 폴리곤 — 줌 임계 기반 토글
   //   zoom < THRESHOLD: 마커만 표시 (산만함 줄임)
   //   zoom ≥ THRESHOLD: 마커 + 필지(폴리곤) + 라벨 함께
+  let _updateCallCount = 0;
   function updateVisibility() {
-    const show = map.getZoom() >= ZOOM_THRESHOLD;
+    _updateCallCount++;
+    const z = map.getZoom();
+    const show = z >= ZOOM_THRESHOLD;
+    let nShown = 0, nHidden = 0;
     document.querySelectorAll('.marker-label').forEach(function(el) {
       if (show) el.classList.add('show');
       else el.classList.remove('show');
     });
-    // 폴리곤은 줌 임계 이상에서만 표시 (선택된 필지는 항상 표시)
     _drawnPolygons.forEach(function(pg) {
       const isSel = !!pg._ofIsSelected;
       if (show || isSel) {
         if (!pg.getMap()) pg.setMap(map);
+        nShown++;
       } else {
         if (pg.getMap()) pg.setMap(null);
+        nHidden++;
       }
     });
+    // 디버그 패널 업데이트
+    const dbg = document.getElementById('of-debug');
+    if (dbg) {
+      const status = show ? '✅ 폴리곤 표시' : '🚫 폴리곤 숨김';
+      dbg.innerHTML =
+        '<div><b>줌</b>: ' + z + ' / 임계 ' + ZOOM_THRESHOLD + '</div>' +
+        '<div><b>상태</b>: ' + status + '</div>' +
+        '<div>폴리곤 ' + _drawnPolygons.length +
+        ' (보임 ' + nShown + ' · 숨김 ' + nHidden + ')</div>' +
+        '<div>마커 ' + _drawnMarkers.length + '</div>' +
+        '<div style="opacity:0.6;">호출 ' + _updateCallCount + '회</div>';
+    }
   }
-  updateVisibility();
   // 외부에서 호출할 수 있게 저장 (zoom_changed 핸들러가 사용)
   window._ofUpdateVisibility = updateVisibility;
+  updateVisibility();
 
-  // CadastralLayer + 토글 버튼 + 줌 이벤트 (한 번만)
+  // CadastralLayer + 토글 버튼 + 줌 이벤트 + 디버그 패널 (한 번만)
   if (!_cadastralLayer) {
     _cadastralLayer = new naver.maps.CadastralLayer();
     _cadastralLayer.setMap(map);
     const cadBtn = document.createElement('button');
     const cadHint = document.createElement('div');
+    const dbgBox = document.createElement('div');
     cadBtn.style.cssText =
       'position:absolute;top:10px;left:10px;z-index:1000;' +
       'padding:10px 14px;background:white;border:1px solid #c0c0c0;' +
@@ -241,6 +261,15 @@ function renderMap(args) {
       'border:1px solid #fbbf24;border-radius:4px;font-size:11px;' +
       'box-shadow:0 1px 3px rgba(0,0,0,0.15);display:none;';
     cadHint.innerText = '🔍 핀치줌으로 더 확대 → 줌 14↑';
+    // 디버그 패널 — 우측 상단
+    dbgBox.id = 'of-debug';
+    dbgBox.style.cssText =
+      'position:absolute;top:10px;right:10px;z-index:1000;' +
+      'padding:8px 12px;background:#fef3c7;border:3px solid #0a0a0a;' +
+      'box-shadow:3px 3px 0 #0a0a0a;font-family:monospace;' +
+      'font-size:11.5px;line-height:1.5;color:#0a0a0a;font-weight:600;' +
+      'min-width:160px;';
+    dbgBox.innerText = 'debug …';
     function refreshCad() {
       const z = map.getZoom();
       const on = !!_cadastralLayer.getMap();
@@ -257,8 +286,10 @@ function renderMap(args) {
     };
     document.getElementById('map').appendChild(cadBtn);
     document.getElementById('map').appendChild(cadHint);
+    document.getElementById('map').appendChild(dbgBox);
     naver.maps.Event.addListener(map, 'zoom_changed', function() {
-      updateVisibility();
+      // 최신 updateVisibility 호출 (renderMap이 다시 불려서 함수가 갱신됐을 수 있음)
+      if (window._ofUpdateVisibility) window._ofUpdateVisibility();
       refreshCad();
     });
     refreshCad();
