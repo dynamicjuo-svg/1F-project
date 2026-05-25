@@ -296,19 +296,23 @@ function render() {
     };
     tbody.appendChild(tr);
   });
-  // 선택된 row를 스크롤 영역의 위쪽으로 자동 이동
-  // (지도에서 클릭 → 표에서 찾으려고 스크롤 내릴 필요 없게)
+  // 선택된 row를 스크롤 영역의 가운데로 이동 (위쪽이면 헤더에 가려져 잘림)
   if (_selectedPnu) {
     setTimeout(function() {
       const selTr = tbody.querySelector('tr[data-of-selected="1"]');
       if (selTr) {
         const scrollEl = document.getElementById('scroll');
         if (scrollEl) {
-          // 선택 row가 스크롤 영역 상단에서 약간 아래(헤더 가림 회피)에 오도록
-          const offsetTop = selTr.offsetTop - 8;
-          scrollEl.scrollTo({ top: offsetTop, behavior: 'smooth' });
+          // 선택 row가 스크롤 영역 가운데에 오도록
+          const offsetTop = selTr.offsetTop
+            - (scrollEl.clientHeight / 2)
+            + (selTr.offsetHeight / 2);
+          scrollEl.scrollTo({
+            top: Math.max(0, offsetTop),
+            behavior: 'smooth',
+          });
         } else {
-          selTr.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          selTr.scrollIntoView({ block: 'center', behavior: 'smooth' });
         }
       }
     }, 50);
