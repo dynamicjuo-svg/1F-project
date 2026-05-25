@@ -900,7 +900,7 @@ def search(query: str):
     sql = (
         "SELECT id, umd_name, jimok, area_m2, deal_amount, deal_ymd, "
         "resolved_pnu, resolved_jibun, resolved_lon, resolved_lat, "
-        "unit_per_pyeong, match_confidence "
+        "unit_per_pyeong, match_confidence, price_anomaly "
         "FROM trades WHERE " + " AND ".join(where) +
         f" ORDER BY {sort_by} {sort_order}"
     )

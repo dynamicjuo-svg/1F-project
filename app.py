@@ -629,7 +629,8 @@ def search_pipeline(query: str, include_road_jimok: bool):
     sql = (
         "SELECT id, umd_name, jimok, area_m2, deal_amount, deal_ymd, "
         "resolved_pnu, resolved_jibun, resolved_lon, resolved_lat, "
-        "unit_per_pyeong, match_confidence, jibun_masked "
+        "unit_per_pyeong, match_confidence, jibun_masked, "
+        "price_anomaly, share_label "
         "FROM trades WHERE " + " AND ".join(where) +
         f" ORDER BY {sort_by} {sort_order}"
     )
@@ -1274,7 +1275,8 @@ if "result" in st.session_state:
                    land_use, dealing_gbn,
                    match_confidence, resolved_pnu, resolved_jibun,
                    resolved_area_m2, resolved_lon, resolved_lat, resolved_jiga,
-                   unit_per_pyeong, candidates_count, share_label
+                   unit_per_pyeong, candidates_count, share_label,
+                   price_anomaly
             FROM trades WHERE resolved_pnu = ?
             ORDER BY deal_ymd DESC
             """,
@@ -1350,12 +1352,17 @@ if "result" in st.session_state:
             unsafe_allow_html=True,
         )
         for i, t in enumerate(sel_trades2):
+            anomaly_tag = ""
+            if t["price_anomaly"] == "high_outlier":
+                anomaly_tag = "  🔥고평가"
+            elif t["price_anomaly"] == "low_outlier":
+                anomaly_tag = "  ❄️저평가"
             with st.expander(
                 f"#{i+1}  {t['deal_ymd'][:10]}  "
                 f"{t['deal_amount']:,}만원  "
                 f"{t['area_m2']:,.0f}㎡  "
                 f"mask=`{t['jibun_masked']}`  "
-                f"[{t['match_confidence']}]",
+                f"[{t['match_confidence']}]{anomaly_tag}",
                 expanded=(i == 0),
             ):
                 raw_cols = st.columns(2)
@@ -1401,6 +1408,11 @@ if "result" in st.session_state:
                         "필지 공시지가": (f"{t['resolved_jiga']:,.0f} 원/㎡"
                                         if t["resolved_jiga"] else "—"),
                         "공유지분 라벨": t["share_label"] or "정상매칭",
+                        "시세 이상치": (
+                            "🔥 고평가 의심" if t["price_anomaly"] == "high_outlier"
+                            else "❄️ 저평가 의심" if t["price_anomaly"] == "low_outlier"
+                            else "정상 범위"
+                        ),
                     }
                     for k, v in of_data.items():
                         st.markdown(
@@ -1638,6 +1650,13 @@ if "result" in st.session_state:
             row["PNU"] = r["resolved_pnu"] or ""
             row["신뢰도"] = r["match_confidence"]
             row["그룹"] = r.get("share_group", "")
+            # 시세 이상치 라벨 (high_outlier → '🔥고평가', low_outlier → '❄️저평가')
+            pa = r.get("price_anomaly")
+            row["이상치"] = (
+                "🔥 고평가" if pa == "high_outlier"
+                else "❄️ 저평가" if pa == "low_outlier"
+                else ""
+            )
             df_rows.append(row)
         df = pd.DataFrame(df_rows)
 

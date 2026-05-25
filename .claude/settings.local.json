@@ -53,7 +53,9 @@
       "WebFetch(domain:www.valueupmap.com)",
       "Bash(python -X utf8 build_parcel_shape.py)",
       "Bash(python -X utf8 search.py \"원삼면 정방형 답 50평이상\")",
-      "Bash(python -X utf8 search.py \"두창리 957-5와 비슷한 매물 길쭉한거 빼고\")"
+      "Bash(python -X utf8 search.py \"두창리 957-5와 비슷한 매물 길쭉한거 빼고\")",
+      "Bash(python -X utf8 build_baekam_ri_mapping.py)",
+      "Bash(python -X utf8 build_price_anomaly.py)"
     ]
   }
 }

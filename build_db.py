@@ -88,6 +88,7 @@ def init_db():
         unit_per_pyeong REAL,
         candidates_count INTEGER,
         share_label TEXT,
+        price_anomaly TEXT,
         UNIQUE(sigg_cd, umd_name, jimok, area_m2, jibun_masked,
                deal_year, deal_month, deal_day, deal_amount)
     );
